@@ -34,110 +34,32 @@ const searchPinecone = async (query: string, topK: number = 3, similarityThresho
   
   try {
     // Step 1: Convert query to embedding
-    await queryToEmbedding(query);
+    const embedding = await queryToEmbedding(query);
     
     // Step 2: In a real implementation, this would use the Pinecone JS SDK to query the vector database
     await delay(1000); // Simulate Pinecone search latency
     
-    // For demonstration, return different mock results based on query keywords
-    let results = [];
+    // For now, we'll simulate varied results based on the query to make it appear more realistic
+    // In a real implementation, this would be the actual results from Pinecone
+    const mockResults = [];
     
-    if (query.toLowerCase().includes('vector') || query.toLowerCase().includes('database')) {
-      results = [
-        {
-          id: '1',
-          title: 'Understanding Vector Databases',
-          content: 'Vector databases store data as high-dimensional vectors, allowing for semantic search based on meaning rather than keywords.',
-          similarity: 0.92,
-          url: 'https://example.com/vectors'
-        },
-        {
-          id: '2',
-          title: 'Pinecone Documentation',
-          content: 'Pinecone is a vector database designed for machine learning applications, offering fast vector similarity search.',
-          similarity: 0.88,
-          url: 'https://docs.pinecone.io'
-        },
-        {
-          id: '3',
-          title: 'Vector Search Applications',
-          content: 'Common applications of vector search include recommendation systems, semantic search, and natural language understanding.',
-          similarity: 0.81,
-          url: 'https://example.com/applications'
-        }
-      ];
-    } else if (query.toLowerCase().includes('pinecone')) {
-      results = [
-        {
-          id: '2',
-          title: 'Pinecone Documentation',
-          content: 'Pinecone is a vector database designed for machine learning applications, offering fast vector similarity search.',
-          similarity: 0.95,
-          url: 'https://docs.pinecone.io'
-        },
-        {
-          id: '3',
-          title: 'Building with Pinecone',
-          content: 'Learn how to use Pinecone with various language models and frameworks.',
-          similarity: 0.87,
-          url: 'https://docs.pinecone.io/guides'
-        },
-        {
-          id: '4',
-          title: 'Pinecone Index Management',
-          content: 'Create, configure, and manage Pinecone indexes to optimize for your specific use case.',
-          similarity: 0.82,
-          url: 'https://docs.pinecone.io/reference'
-        }
-      ];
-    } else if (query.toLowerCase().includes('embedding') || query.toLowerCase().includes('openai')) {
-      results = [
-        {
-          id: '5',
-          title: 'OpenAI Embeddings',
-          content: 'OpenAI embeddings convert text into numerical vectors that capture semantic meaning.',
-          similarity: 0.91,
-          url: 'https://platform.openai.com/docs/guides/embeddings'
-        },
-        {
-          id: '6',
-          title: 'Integrating OpenAI with Pinecone',
-          content: 'Learn how to use OpenAI embeddings with Pinecone for advanced semantic search capabilities.',
-          similarity: 0.85,
-          url: 'https://example.com/openai-pinecone'
-        },
-        {
-          id: '7',
-          title: 'Vector Embedding Models',
-          content: 'Comparison of different embedding models and their performance characteristics.',
-          similarity: 0.78,
-          url: 'https://example.com/embedding-models'
-        }
-      ];
-    } else {
-      // Return generic results for other queries
-      results = [
-        {
-          id: '8',
-          title: 'AI and Vector Search',
-          content: 'Modern AI applications use vector search to find semantically similar content.',
-          similarity: 0.75,
-          url: 'https://example.com/ai-search'
-        },
-        {
-          id: '9',
-          title: 'Semantic Search Fundamentals',
-          content: 'Understanding the basics of semantic search and how it differs from traditional keyword search.',
-          similarity: 0.73,
-          url: 'https://example.com/semantic-search'
-        }
-      ];
+    // Generate 5 mock results with varying similarity scores
+    for (let i = 0; i < 5; i++) {
+      const similarity = 0.95 - (i * 0.05); // Simulate decreasing similarity scores
+      
+      if (similarity >= similarityThreshold) {
+        mockResults.push({
+          id: `result-${i}`,
+          title: `Result ${i+1} for "${query}"`,
+          content: `This is simulated content for the query "${query}". In a real implementation, this would be the actual content from your vector database.`,
+          similarity: similarity,
+          url: `https://example.com/result-${i}`
+        });
+      }
     }
     
-    // Filter by similarity threshold and limit to topK results
-    return results
-      .filter(result => result.similarity >= similarityThreshold)
-      .slice(0, topK);
+    // Return top results limited by topK
+    return mockResults.slice(0, topK);
       
   } catch (error) {
     console.error('Error searching Pinecone:', error);
@@ -157,39 +79,23 @@ const generateResponseWithOpenAI = async (query: string, chunks: any[], conversa
     await delay(1500); // Simulate OpenAI processing time
     
     // Extract content from chunks to use as context
-    const context = chunks.map(chunk => `${chunk.title}: ${chunk.content}`).join('\n\n');
+    const context = chunks.map((chunk, index) => `Context ${index+1}: ${chunk.content}`).join('\n\n');
     
     console.log(`Using context:\n${context}`);
     
     // Create a simulated response based on the chunks and query
     if (chunks.length > 0) {
-      // Simulate a response that incorporates information from the chunks
-      const highestSimilarityChunk = chunks.reduce((prev, current) => 
-        (prev.similarity > current.similarity) ? prev : current
-      );
+      const response = `Based on your query "${query}", I found the following information:\n\n`;
       
-      let baseResponse = '';
+      // In a real implementation, this would be the actual response from OpenAI
+      // For now, we'll create a simple response that references the chunks
+      const chunkSummaries = chunks.map((chunk, index) => {
+        return `Information source ${index+1} (${Math.round(chunk.similarity * 100)}% match): ${chunk.content}`;
+      }).join('\n\n');
       
-      if (query.toLowerCase().includes('vector') || query.toLowerCase().includes('database')) {
-        baseResponse = "Vector databases like Pinecone store data as high-dimensional vectors, enabling semantic search based on meaning rather than keywords. When you query a vector database, it finds the most similar vectors to your query vector using distance metrics like cosine similarity. This is particularly useful for natural language processing, image recognition, and recommendation systems.";
-      } else if (query.toLowerCase().includes('pinecone')) {
-        baseResponse = "Pinecone is a vector database optimized for machine learning applications. It provides fast similarity search for vectors with high dimensionality, making it ideal for applications like semantic search, recommendation systems, and AI chatbots. Pinecone handles the infrastructure complexities of scaling vector search, allowing developers to focus on building applications.";
-      } else if (query.toLowerCase().includes('embedding') || query.toLowerCase().includes('openai')) {
-        baseResponse = "OpenAI's embeddings convert text into numerical vectors that capture semantic meaning. These embeddings can then be stored in vector databases like Pinecone for efficient retrieval. When a user asks a question, the query is converted to an embedding and used to search for the most similar vectors in the database, providing context for generating accurate answers.";
-      } else {
-        baseResponse = `Based on the information I found, ${highestSimilarityChunk.content} This allows for more contextually relevant responses compared to traditional keyword-based search methods.`;
-      }
-      
-      // Add citation to make it look more realistic
-      const responseParts = baseResponse.split('.');
-      if (responseParts.length > 2) {
-        const citationIndex = Math.floor(responseParts.length / 2);
-        responseParts[citationIndex] += ` [${highestSimilarityChunk.title}]`;
-      }
-      
-      return responseParts.join('.');
+      return `${response}${chunkSummaries}\n\nIs there anything specific about this topic you'd like to know more about?`;
     } else {
-      return "I don't have specific information about that in my knowledge base. Could you clarify your question or ask about vector databases, Pinecone, or how they work with language models?";
+      return `I couldn't find any relevant information for your query "${query}" in the vector database. Could you please rephrase your question or ask about something else?`;
     }
   } catch (error) {
     console.error('Error generating response with OpenAI:', error);
