@@ -3,7 +3,7 @@ import React from 'react';
 import { ChatMessage as ChatMessageType, Source } from '@/types';
 import { User, Bot, ExternalLink, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -55,18 +55,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                     <div key={source.id} className="p-2 rounded bg-background/50 text-xs">
                       <div className="flex justify-between items-start mb-1">
                         <div className="font-medium">{source.title}</div>
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center">
-                                <span>{Math.round(source.similarity * 100)}%</span>
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Similarity score</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center">
+                              <span>{Math.round(source.similarity * 100)}%</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Similarity score</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                       <p className="text-muted-foreground line-clamp-2">{source.content}</p>
                       {source.url && (
@@ -91,19 +89,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             {formatTimestamp(message.timestamp)}
             
             {message.confidence && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="ml-2 flex items-center">
-                      <Info className="h-3 w-3 mr-0.5" />
-                      <span>{Math.round(message.confidence * 100)}%</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Confidence score</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="ml-2 flex items-center">
+                    <Info className="h-3 w-3 mr-0.5" />
+                    <span>{Math.round(message.confidence * 100)}%</span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Confidence score</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
