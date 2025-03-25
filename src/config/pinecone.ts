@@ -7,6 +7,3 @@ export const PINECONE_CONFIG: PineconeConfig = {
   environment: 'gcp-starter',  // Default environment, will be updated if needed
   indexName: 'darren-n8n'
 };
-
-// API endpoint for chat requests
-export const API_ENDPOINT = '/api/chat';

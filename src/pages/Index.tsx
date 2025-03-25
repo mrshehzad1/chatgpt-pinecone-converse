@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { sendMessage, getConversationHistory } from '@/services/api';
+import { sendMessage, getConversationHistory, resetConversation } from '@/services/api';
 import { ChatMessage as ChatMessageType } from '@/types';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
@@ -49,7 +49,7 @@ const Index = () => {
       
       setMessages(prev => [...prev, thinkingMessage]);
       
-      // Send to API
+      // Send to RAG system
       const response = await sendMessage(message);
       
       // Remove thinking message and add real response
@@ -86,6 +86,7 @@ const Index = () => {
   };
 
   const handleResetConversation = () => {
+    resetConversation();
     setMessages([]);
   };
 

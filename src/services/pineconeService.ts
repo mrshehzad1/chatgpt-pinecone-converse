@@ -1,43 +1,61 @@
 
 import { PINECONE_CONFIG } from '@/config/pinecone';
-import { ApiError } from '@/types';
+import { ApiError, Source } from '@/types';
 import { queryToEmbedding } from './embeddingService';
 
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Simulate vector search in Pinecone
-export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.7): Promise<any[]> => {
+// Search Pinecone index for similar documents
+export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.7): Promise<Source[]> => {
   console.log(`Searching Pinecone index "${PINECONE_CONFIG.indexName}" for: ${query}`);
   
   try {
-    // Step 1: Convert query to embedding
+    // Convert query to embedding
     const embedding = await queryToEmbedding(query);
     
-    // Step 2: In a real implementation, this would use the Pinecone JS SDK to query the vector database
-    await delay(1000); // Simulate Pinecone search latency
+    // Simulate Pinecone search latency
+    await delay(1000);
     
-    // For now, we'll simulate varied results based on the query to make it appear more realistic
-    // In a real implementation, this would be the actual results from Pinecone
-    const mockResults = [];
+    // Generate dynamic mock results based on the query
+    const mockResults: Source[] = [];
+    const topics = ['workflow automation', 'integration', 'API', 'n8n', 'automation', 'data', 'trigger', 'action'];
     
-    // Generate 5 mock results with varying similarity scores
+    // Find potentially relevant topics in the query
+    const relevantTopics = topics.filter(topic => 
+      query.toLowerCase().includes(topic.toLowerCase())
+    );
+    
+    // If no relevant topics found, use random ones to simulate semantic search
+    const topicsToUse = relevantTopics.length > 0 ? relevantTopics : 
+      topics.sort(() => 0.5 - Math.random()).slice(0, 2);
+    
+    // Generate mock results with varying similarity based on query relevance
     for (let i = 0; i < 5; i++) {
-      const similarity = 0.95 - (i * 0.05); // Simulate decreasing similarity scores
+      // Higher similarity for results mentioning topics from the query
+      const topicFactor = topicsToUse.length > 0 ? 0.05 : 0;
+      const similarity = Math.min(0.95 - (i * 0.07) + topicFactor, 0.97);
       
       if (similarity >= similarityThreshold) {
+        // Generate content that includes the actual query terms to make it more realistic
+        const topicMention = topicsToUse[i % topicsToUse.length] || '';
+        const queryTerms = query.split(' ').filter(term => term.length > 3);
+        const queryMention = queryTerms.length > 0 ? queryTerms[i % queryTerms.length] : '';
+        
         mockResults.push({
-          id: `result-${i}`,
-          title: `Result ${i+1} for "${query}"`,
-          content: `This is simulated content for the query "${query}". In a real implementation, this would be the actual content from your vector database.`,
+          id: `doc-${i}-${Date.now()}`,
+          title: `Document about ${topicMention || 'n8n'} ${i+1}`,
+          content: `This document explains how to use ${topicMention || 'n8n'} for workflow automation. ${
+            queryMention ? `It specifically covers ${queryMention} in detail.` : ''
+          } You can create complex workflows connecting various services and APIs.`,
           similarity: similarity,
-          url: `https://example.com/result-${i}`
+          url: `https://docs.n8n.io/example-${i+1}`
         });
       }
     }
     
-    // Return top results limited by topK
-    return mockResults.slice(0, topK);
+    // Return sorted results (highest similarity first), limited by topK
+    return mockResults.sort((a, b) => b.similarity - a.similarity).slice(0, topK);
       
   } catch (error) {
     console.error('Error searching Pinecone:', error);

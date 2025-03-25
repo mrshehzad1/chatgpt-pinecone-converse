@@ -4,7 +4,7 @@ import { searchPinecone } from './pineconeService';
 import { generateResponseWithOpenAI } from './openaiService';
 import { getConversationHistory, addMessageToHistory, resetConversation, getConversationId } from './conversationService';
 
-// Send a message to the API
+// Send a message directly to RAG system
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
   try {
     // Add user message to history
@@ -54,5 +54,5 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
   }
 };
 
-// Re-export functions from conversationService for backward compatibility
+// Re-export functions from conversationService for ease of use
 export { getConversationHistory, resetConversation };
