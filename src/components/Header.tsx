@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { resetConversation } from '@/services/api';
-import { Sparkles, Menu, RotateCcw, Database } from 'lucide-react';
+import { RotateCcw, Database, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import SettingsDialog from './SettingsDialog';
 
 interface HeaderProps {
   onResetConversation: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onResetConversation }) => {
   const { toast } = useToast();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const handleReset = () => {
     resetConversation();
@@ -28,11 +30,19 @@ const Header: React.FC<HeaderProps> = ({ onResetConversation }) => {
           <Database className="h-5 w-5 text-primary animate-pulse-subtle" />
           <h1 className="text-xl font-medium">Pinecone Chat</h1>
           <div className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
-            darren-n8n
+            RAG Demo
           </div>
         </div>
         
         <div className="flex items-center space-x-4">
+          <button 
+            onClick={() => setSettingsOpen(true)}
+            className="floating-button flex items-center space-x-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
+          
           <button 
             onClick={handleReset}
             className="floating-button flex items-center space-x-1 text-sm text-muted-foreground hover:text-foreground"
@@ -42,6 +52,8 @@ const Header: React.FC<HeaderProps> = ({ onResetConversation }) => {
           </button>
         </div>
       </div>
+      
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </header>
   );
 };

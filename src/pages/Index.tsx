@@ -5,12 +5,16 @@ import { ChatMessage as ChatMessageType } from '@/types';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import Header from '@/components/Header';
-import { Bot, Sparkles } from 'lucide-react';
+import { Bot, Sparkles, Settings } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { getOpenAIApiKey } from '@/config/openai';
+import { PINECONE_CONFIG } from '@/config/pinecone';
+import SettingsDialog from '@/components/SettingsDialog';
 
 const Index = () => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -18,6 +22,19 @@ const Index = () => {
     // Load conversation history
     const history = getConversationHistory();
     setMessages(history);
+    
+    // Check for API keys
+    const openaiKey = getOpenAIApiKey();
+    const pineconeProjectId = PINECONE_CONFIG.projectId;
+    
+    if (!openaiKey || !pineconeProjectId) {
+      setSettingsOpen(true);
+      toast({
+        title: "API Configuration Required",
+        description: "Please enter your OpenAI and Pinecone API details to use the RAG system.",
+        duration: 5000,
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -27,6 +44,21 @@ const Index = () => {
 
   const handleSendMessage = async (message: string) => {
     try {
+      // Check for API keys before sending
+      const openaiKey = getOpenAIApiKey();
+      const pineconeProjectId = PINECONE_CONFIG.projectId;
+      
+      if (!openaiKey || !pineconeProjectId) {
+        setSettingsOpen(true);
+        toast({
+          title: "API Configuration Required",
+          description: "Please enter your OpenAI and Pinecone API details to use the RAG system.",
+          variant: "destructive",
+          duration: 5000,
+        });
+        return;
+      }
+      
       setIsLoading(true);
       
       // Optimistically add user message to UI
@@ -106,6 +138,16 @@ const Index = () => {
                 Ask me anything about vector databases, semantic search, or how to build AI applications with Pinecone.
               </p>
               
+              {(!getOpenAIApiKey() || !PINECONE_CONFIG.projectId) && (
+                <button
+                  onClick={() => setSettingsOpen(true)}
+                  className="mb-8 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span>Configure API Settings</span>
+                </button>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
                   "What is a vector database?",
@@ -116,8 +158,8 @@ const Index = () => {
                   <button
                     key={i}
                     onClick={() => handleSendMessage(suggestion)}
-                    disabled={isLoading}
-                    className="text-left p-3 rounded-xl border border-border hover:bg-secondary/50 transition-colors floating-button"
+                    disabled={isLoading || !getOpenAIApiKey() || !PINECONE_CONFIG.projectId}
+                    className="text-left p-3 rounded-xl border border-border hover:bg-secondary/50 transition-colors floating-button disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="text-sm">{suggestion}</span>
                   </button>
@@ -133,9 +175,14 @@ const Index = () => {
             </div>
           )}
           
-          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          <ChatInput 
+            onSendMessage={handleSendMessage} 
+            isLoading={isLoading} 
+          />
         </div>
       </main>
+      
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };

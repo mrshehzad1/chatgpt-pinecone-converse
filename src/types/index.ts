@@ -27,6 +27,8 @@ export interface PineconeConfig {
   apiKey: string;
   environment: string;
   indexName: string;
+  projectId: string;
+  namespace?: string;
 }
 
 export interface ApiError {

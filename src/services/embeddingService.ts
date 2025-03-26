@@ -1,13 +1,36 @@
 
-// Simulate network delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+import { OPENAI_CONFIG } from '@/config/openai';
+import { ApiError } from '@/types';
 
-// Simulate converting query to vector embedding
 export const queryToEmbedding = async (query: string): Promise<number[]> => {
   console.log(`Converting query to embedding: ${query}`);
-  await delay(300); // Simulate embedding generation time
   
-  // In a real implementation, this would call OpenAI's embedding API
-  // For simulation, we'll return a mock embedding
-  return Array(1536).fill(0).map(() => Math.random() - 0.5);
+  try {
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_CONFIG.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        input: query,
+        model: 'text-embedding-ada-002'
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('OpenAI API error:', errorData);
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.data[0].embedding;
+  } catch (error: any) {
+    console.error('Error generating embedding:', error);
+    throw {
+      message: `Failed to generate embedding: ${error.message}`,
+      status: 500
+    } as ApiError;
+  }
 };
