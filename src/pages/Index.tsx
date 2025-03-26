@@ -5,16 +5,18 @@ import { ChatMessage as ChatMessageType } from '@/types';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import Header from '@/components/Header';
-import { Bot, Sparkles, Settings } from 'lucide-react';
+import { Bot, Sparkles, Settings, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOpenAIApiKey } from '@/config/openai';
 import { PINECONE_CONFIG } from '@/config/pinecone';
 import SettingsDialog from '@/components/SettingsDialog';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 const Index = () => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -25,15 +27,20 @@ const Index = () => {
     
     // Check for API keys
     const openaiKey = getOpenAIApiKey();
+    const pineconeKey = PINECONE_CONFIG.apiKey;
     const pineconeProjectId = PINECONE_CONFIG.projectId;
     
-    if (!openaiKey || !pineconeProjectId) {
+    if (!openaiKey) {
+      setConfigError("OpenAI API key is missing. Please configure it in settings.");
       setSettingsOpen(true);
-      toast({
-        title: "API Configuration Required",
-        description: "Please enter your OpenAI and Pinecone API details to use the RAG system.",
-        duration: 5000,
-      });
+    } else if (!pineconeKey) {
+      setConfigError("Pinecone API key is missing. Please configure it in settings.");
+      setSettingsOpen(true);
+    } else if (!pineconeProjectId) {
+      setConfigError("Pinecone project ID is missing. Please configure it in settings.");
+      setSettingsOpen(true);
+    } else {
+      setConfigError(null);
     }
   }, []);
 
@@ -46,9 +53,10 @@ const Index = () => {
     try {
       // Check for API keys before sending
       const openaiKey = getOpenAIApiKey();
+      const pineconeKey = PINECONE_CONFIG.apiKey;
       const pineconeProjectId = PINECONE_CONFIG.projectId;
       
-      if (!openaiKey || !pineconeProjectId) {
+      if (!openaiKey || !pineconeKey || !pineconeProjectId) {
         setSettingsOpen(true);
         toast({
           title: "API Configuration Required",
@@ -122,12 +130,29 @@ const Index = () => {
     setMessages([]);
   };
 
+  const handleSettingsSave = () => {
+    setConfigError(null);
+    toast({
+      title: "Settings Updated",
+      description: "Your API settings have been saved successfully.",
+      duration: 3000,
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header onResetConversation={handleResetConversation} />
       
       <main className="flex-1 py-6">
         <div className="chat-container">
+          {configError && (
+            <Alert variant="destructive" className="mb-4 mx-auto max-w-3xl">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Configuration Error</AlertTitle>
+              <AlertDescription>{configError}</AlertDescription>
+            </Alert>
+          )}
+          
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
@@ -138,7 +163,7 @@ const Index = () => {
                 Ask me anything about vector databases, semantic search, or how to build AI applications with Pinecone.
               </p>
               
-              {(!getOpenAIApiKey() || !PINECONE_CONFIG.projectId) && (
+              {(!getOpenAIApiKey() || !PINECONE_CONFIG.apiKey || !PINECONE_CONFIG.projectId) && (
                 <button
                   onClick={() => setSettingsOpen(true)}
                   className="mb-8 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
@@ -182,7 +207,11 @@ const Index = () => {
         </div>
       </main>
       
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <SettingsDialog 
+        open={settingsOpen} 
+        onOpenChange={setSettingsOpen} 
+        onSave={handleSettingsSave}
+      />
     </div>
   );
 };

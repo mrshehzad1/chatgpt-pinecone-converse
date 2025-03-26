@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -7,23 +7,66 @@ import { Button } from '@/components/ui/button';
 import { setPineconeConfig, PINECONE_CONFIG } from '@/config/pinecone';
 import { setOpenAIApiKey, getOpenAIApiKey } from '@/config/openai';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSave?: () => void;
 }
 
-const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) => {
+const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onSave }) => {
   const [pineconeApiKey, setPineconeApiKey] = useState(PINECONE_CONFIG.apiKey);
   const [pineconeEnvironment, setPineconeEnvironment] = useState(PINECONE_CONFIG.environment);
   const [pineconeIndexName, setPineconeIndexName] = useState(PINECONE_CONFIG.indexName);
   const [pineconeProjectId, setPineconeProjectId] = useState(PINECONE_CONFIG.projectId);
   const [pineconeNamespace, setPineconeNamespace] = useState(PINECONE_CONFIG.namespace || '');
   const [openaiApiKey, setOpenaiApiKey] = useState(getOpenAIApiKey());
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   const { toast } = useToast();
 
+  // Update form fields when config changes externally
+  useEffect(() => {
+    setPineconeApiKey(PINECONE_CONFIG.apiKey);
+    setPineconeEnvironment(PINECONE_CONFIG.environment);
+    setPineconeIndexName(PINECONE_CONFIG.indexName);
+    setPineconeProjectId(PINECONE_CONFIG.projectId);
+    setPineconeNamespace(PINECONE_CONFIG.namespace || '');
+    setOpenaiApiKey(getOpenAIApiKey());
+  }, [open]);
+
+  const validateForm = (): boolean => {
+    if (!openaiApiKey) {
+      setValidationError("OpenAI API key is required");
+      return false;
+    }
+    
+    if (!pineconeApiKey) {
+      setValidationError("Pinecone API key is required");
+      return false;
+    }
+    
+    if (!pineconeIndexName) {
+      setValidationError("Pinecone index name is required");
+      return false;
+    }
+    
+    if (!pineconeProjectId) {
+      setValidationError("Pinecone project ID is required");
+      return false;
+    }
+    
+    setValidationError(null);
+    return true;
+  };
+
   const handleSave = () => {
+    if (!validateForm()) {
+      return;
+    }
+    
     // Save Pinecone config
     setPineconeConfig({
       apiKey: pineconeApiKey,
@@ -43,6 +86,11 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
       duration: 3000,
     });
     
+    // Call onSave callback if provided
+    if (onSave) {
+      onSave();
+    }
+    
     onOpenChange(false);
   };
 
@@ -55,6 +103,13 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange }) =
             Configure your Pinecone and OpenAI API settings. These are stored locally in your browser.
           </DialogDescription>
         </DialogHeader>
+        
+        {validationError && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{validationError}</AlertDescription>
+          </Alert>
+        )}
         
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
