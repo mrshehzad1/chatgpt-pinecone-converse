@@ -2,7 +2,7 @@
 import { PINECONE_CONFIG } from '@/config/pinecone';
 import { ApiError, Source } from '@/types';
 import { queryToEmbedding } from './embeddingService';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 
 // Search Pinecone index for similar documents
 export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.7): Promise<Source[]> => {
@@ -10,12 +10,22 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
   
   try {
     // Validate Pinecone configuration
-    if (!PINECONE_CONFIG.apiKey) {
-      throw new Error('Pinecone API key is missing. Please set it in the settings.');
+    if (!PINECONE_CONFIG.apiKey || PINECONE_CONFIG.apiKey.trim() === '') {
+      const error = new Error('Pinecone API key is missing. Please configure it in settings.');
+      console.error(error);
+      toast.error("Pinecone API key is missing", {
+        description: "Please configure it in settings."
+      });
+      throw error;
     }
     
     if (!PINECONE_CONFIG.indexName || !PINECONE_CONFIG.projectId) {
-      throw new Error('Pinecone index name or project ID is missing. Please configure in settings.');
+      const error = new Error('Pinecone index name or project ID is missing. Please configure in settings.');
+      console.error(error);
+      toast.error("Pinecone configuration incomplete", {
+        description: "Index name or project ID is missing."
+      });
+      throw error;
     }
     
     // Convert query to embedding
@@ -23,11 +33,12 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     
     // Prepare the request to Pinecone
     const url = `https://${PINECONE_CONFIG.indexName}-${PINECONE_CONFIG.projectId}.svc.${PINECONE_CONFIG.environment}.pinecone.io/query`;
+    console.log(`Making request to Pinecone at: ${url}`);
     
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Api-Key': PINECONE_CONFIG.apiKey,
+        'Api-Key': PINECONE_CONFIG.apiKey.trim(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -35,15 +46,19 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         topK: topK,
         includeMetadata: true,
         includeValues: false,
-        namespace: PINECONE_CONFIG.namespace || ''
+        namespace: PINECONE_CONFIG.namespace ? PINECONE_CONFIG.namespace.trim() : ''
       }),
     });
     
     if (!response.ok) {
       // Handle 401 Unauthorized error specifically
       if (response.status === 401) {
-        console.error('Pinecone authorization failed: Invalid API key or permissions');
-        throw new Error('Pinecone authorization failed: Invalid API key or permissions');
+        const error = new Error('Pinecone authorization failed: Invalid API key or permissions');
+        console.error(error);
+        toast.error("Pinecone authorization failed", {
+          description: "Invalid API key or permissions. Please check your API key in settings."
+        });
+        throw error;
       }
       
       // Try to parse error if possible
@@ -65,6 +80,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         }
       }
       
+      toast.error("Pinecone API Error", {
+        description: errorMessage
+      });
       throw new Error(errorMessage);
     }
     
@@ -72,14 +90,19 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     console.log('Pinecone response:', data);
     
     // Transform Pinecone results into Source objects
+    if (!data.matches || !Array.isArray(data.matches)) {
+      console.warn('Unexpected Pinecone response format:', data);
+      return [];
+    }
+    
     const results: Source[] = data.matches
       .filter((match: any) => match.score >= similarityThreshold)
       .map((match: any) => ({
         id: match.id,
-        title: match.metadata.title || 'Document ' + match.id.substring(0, 8),
-        content: match.metadata.content || match.metadata.text || 'No content available',
+        title: match.metadata?.title || 'Document ' + match.id.substring(0, 8),
+        content: match.metadata?.content || match.metadata?.text || 'No content available',
         similarity: match.score,
-        url: match.metadata.url || null
+        url: match.metadata?.url || null
       }));
     
     return results;
@@ -87,12 +110,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
   } catch (error: any) {
     console.error('Error searching Pinecone:', error);
     
-    // Display toast with error message
-    toast({
-      title: "Pinecone Search Error",
-      description: error.message || "Failed to search vector database",
-      variant: "destructive",
-      duration: 5000,
+    // We'll use sonner toast instead of the older toast component
+    toast.error("Pinecone Search Error", {
+      description: error.message || "Failed to search vector database"
     });
     
     throw {

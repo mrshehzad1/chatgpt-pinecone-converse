@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { setPineconeConfig, PINECONE_CONFIG } from '@/config/pinecone';
 import { setOpenAIApiKey, getOpenAIApiKey } from '@/config/openai';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -25,8 +26,6 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
   const [openaiApiKey, setOpenaiApiKey] = useState(getOpenAIApiKey());
   const [validationError, setValidationError] = useState<string | null>(null);
   
-  const { toast } = useToast();
-
   // Update form fields when config changes externally
   useEffect(() => {
     setPineconeApiKey(PINECONE_CONFIG.apiKey);
@@ -38,22 +37,22 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
   }, [open]);
 
   const validateForm = (): boolean => {
-    if (!openaiApiKey) {
+    if (!openaiApiKey || openaiApiKey.trim() === '') {
       setValidationError("OpenAI API key is required");
       return false;
     }
     
-    if (!pineconeApiKey) {
+    if (!pineconeApiKey || pineconeApiKey.trim() === '') {
       setValidationError("Pinecone API key is required");
       return false;
     }
     
-    if (!pineconeIndexName) {
+    if (!pineconeIndexName || pineconeIndexName.trim() === '') {
       setValidationError("Pinecone index name is required");
       return false;
     }
     
-    if (!pineconeProjectId) {
+    if (!pineconeProjectId || pineconeProjectId.trim() === '') {
       setValidationError("Pinecone project ID is required");
       return false;
     }
@@ -80,10 +79,8 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
     setOpenAIApiKey(openaiApiKey);
     
     // Show success toast
-    toast({
-      title: "Settings saved",
-      description: "Your API keys and configurations have been saved.",
-      duration: 3000,
+    toast.success("Settings saved", {
+      description: "Your API keys and configurations have been saved."
     });
     
     // Call onSave callback if provided
@@ -113,7 +110,17 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
         
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <h3 className="text-lg font-medium">OpenAI</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">OpenAI</h3>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Get your OpenAI API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">platform.openai.com/api-keys</a></p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="openaiApiKey" className="col-span-1">API Key</Label>
               <Input
@@ -128,7 +135,17 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
           </div>
           
           <div className="space-y-2">
-            <h3 className="text-lg font-medium">Pinecone</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-medium">Pinecone</h3>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="max-w-xs">Find your Pinecone API key, index name, and project ID in the Pinecone console.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="pineconeApiKey" className="col-span-1">API Key</Label>
