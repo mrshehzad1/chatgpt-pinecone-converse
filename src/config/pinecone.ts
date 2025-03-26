@@ -3,11 +3,11 @@ import { PineconeConfig } from '@/types';
 
 // Pinecone configuration
 export const PINECONE_CONFIG: PineconeConfig = {
-  apiKey: localStorage.getItem('pinecone_api_key') || '',
-  environment: localStorage.getItem('pinecone_environment') || 'gcp-starter',
-  indexName: localStorage.getItem('pinecone_index_name') || '',
-  projectId: localStorage.getItem('pinecone_project_id') || '',
-  namespace: localStorage.getItem('pinecone_namespace') || ''
+  apiKey: localStorage.getItem('pinecone_api_key')?.trim() || '',
+  environment: localStorage.getItem('pinecone_environment')?.trim() || 'gcp-starter',
+  indexName: localStorage.getItem('pinecone_index_name')?.trim() || '',
+  projectId: localStorage.getItem('pinecone_project_id')?.trim() || '',
+  namespace: localStorage.getItem('pinecone_namespace')?.trim() || ''
 };
 
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
@@ -17,20 +17,24 @@ export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
     PINECONE_CONFIG.apiKey = trimmedKey;
   }
   if (config.environment !== undefined) {
-    localStorage.setItem('pinecone_environment', config.environment.trim());
-    PINECONE_CONFIG.environment = config.environment.trim();
+    const trimmedEnv = config.environment.trim();
+    localStorage.setItem('pinecone_environment', trimmedEnv);
+    PINECONE_CONFIG.environment = trimmedEnv;
   }
   if (config.indexName !== undefined) {
-    localStorage.setItem('pinecone_index_name', config.indexName.trim());
-    PINECONE_CONFIG.indexName = config.indexName.trim();
+    const trimmedIndex = config.indexName.trim();
+    localStorage.setItem('pinecone_index_name', trimmedIndex);
+    PINECONE_CONFIG.indexName = trimmedIndex;
   }
   if (config.projectId !== undefined) {
-    localStorage.setItem('pinecone_project_id', config.projectId.trim());
-    PINECONE_CONFIG.projectId = config.projectId.trim();
+    const trimmedProject = config.projectId.trim();
+    localStorage.setItem('pinecone_project_id', trimmedProject);
+    PINECONE_CONFIG.projectId = trimmedProject;
   }
   if (config.namespace !== undefined) {
-    localStorage.setItem('pinecone_namespace', config.namespace.trim());
-    PINECONE_CONFIG.namespace = config.namespace.trim();
+    const trimmedNamespace = config.namespace.trim();
+    localStorage.setItem('pinecone_namespace', trimmedNamespace);
+    PINECONE_CONFIG.namespace = trimmedNamespace;
   }
 };
 

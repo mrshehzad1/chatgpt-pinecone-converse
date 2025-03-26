@@ -8,7 +8,7 @@ import { setPineconeConfig, PINECONE_CONFIG } from '@/config/pinecone';
 import { setOpenAIApiKey, getOpenAIApiKey } from '@/config/openai';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, HelpCircle } from 'lucide-react';
+import { AlertCircle, HelpCircle, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SettingsDialogProps {
@@ -28,12 +28,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
   
   // Update form fields when config changes externally
   useEffect(() => {
-    setPineconeApiKey(PINECONE_CONFIG.apiKey);
-    setPineconeEnvironment(PINECONE_CONFIG.environment);
-    setPineconeIndexName(PINECONE_CONFIG.indexName);
-    setPineconeProjectId(PINECONE_CONFIG.projectId);
-    setPineconeNamespace(PINECONE_CONFIG.namespace || '');
-    setOpenaiApiKey(getOpenAIApiKey());
+    if (open) {
+      setPineconeApiKey(PINECONE_CONFIG.apiKey);
+      setPineconeEnvironment(PINECONE_CONFIG.environment);
+      setPineconeIndexName(PINECONE_CONFIG.indexName);
+      setPineconeProjectId(PINECONE_CONFIG.projectId);
+      setPineconeNamespace(PINECONE_CONFIG.namespace || '');
+      setOpenaiApiKey(getOpenAIApiKey());
+      setValidationError(null);
+    }
   }, [open]);
 
   const validateForm = (): boolean => {
@@ -68,15 +71,15 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
     
     // Save Pinecone config
     setPineconeConfig({
-      apiKey: pineconeApiKey,
-      environment: pineconeEnvironment,
-      indexName: pineconeIndexName,
-      projectId: pineconeProjectId,
-      namespace: pineconeNamespace
+      apiKey: pineconeApiKey.trim(),
+      environment: pineconeEnvironment.trim(),
+      indexName: pineconeIndexName.trim(),
+      projectId: pineconeProjectId.trim(),
+      namespace: pineconeNamespace.trim()
     });
     
     // Save OpenAI API key
-    setOpenAIApiKey(openaiApiKey);
+    setOpenAIApiKey(openaiApiKey.trim());
     
     // Show success toast
     toast.success("Settings saved", {
@@ -149,14 +152,24 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
             
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="pineconeApiKey" className="col-span-1">API Key</Label>
-              <Input
-                id="pineconeApiKey"
-                type="password"
-                value={pineconeApiKey}
-                onChange={(e) => setPineconeApiKey(e.target.value)}
-                placeholder="pcsk_..."
-                className="col-span-3"
-              />
+              <div className="col-span-3 relative">
+                <Input
+                  id="pineconeApiKey"
+                  type="password"
+                  value={pineconeApiKey}
+                  onChange={(e) => setPineconeApiKey(e.target.value)}
+                  placeholder="pcsk_..."
+                  className="pr-8"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="max-w-[200px]">If you're getting authorization errors, check that your API key is correct and hasn't expired.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">

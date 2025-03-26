@@ -31,6 +31,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     // Convert query to embedding
     const embedding = await queryToEmbedding(query);
     
+    // Clean and prepare API key
+    const apiKey = PINECONE_CONFIG.apiKey.trim();
+    
     // Prepare the request to Pinecone
     const url = `https://${PINECONE_CONFIG.indexName}-${PINECONE_CONFIG.projectId}.svc.${PINECONE_CONFIG.environment}.pinecone.io/query`;
     console.log(`Making request to Pinecone at: ${url}`);
@@ -38,7 +41,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Api-Key': PINECONE_CONFIG.apiKey.trim(),
+        'Api-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -51,18 +54,19 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     });
     
     if (!response.ok) {
+      let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
+      
       // Handle 401 Unauthorized error specifically
       if (response.status === 401) {
-        const error = new Error('Pinecone authorization failed: Invalid API key or permissions');
-        console.error(error);
+        errorMessage = 'Pinecone authorization failed: Invalid API key or permissions';
+        console.error(errorMessage);
         toast.error("Pinecone authorization failed", {
           description: "Invalid API key or permissions. Please check your API key in settings."
         });
-        throw error;
+        throw new Error(errorMessage);
       }
       
       // Try to parse error if possible
-      let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
         console.error('Pinecone API error:', errorData);
