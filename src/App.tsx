@@ -18,7 +18,7 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-      <Sonner position="top-right" />
+      <Sonner position="top-center" expand={true} closeButton={true} richColors />
       <Toaster />
     </TooltipProvider>
   </QueryClientProvider>

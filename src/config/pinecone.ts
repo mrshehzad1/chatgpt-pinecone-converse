@@ -1,13 +1,19 @@
 
 import { PineconeConfig } from '@/types';
 
+// Helper function to safely get and trim localStorage values
+const getLocalStorageItem = (key: string, defaultValue: string = ''): string => {
+  const value = localStorage.getItem(key);
+  return value ? value.trim() : defaultValue;
+};
+
 // Pinecone configuration
 export const PINECONE_CONFIG: PineconeConfig = {
-  apiKey: localStorage.getItem('pinecone_api_key')?.trim() || '',
-  environment: localStorage.getItem('pinecone_environment')?.trim() || 'gcp-starter',
-  indexName: localStorage.getItem('pinecone_index_name')?.trim() || '',
-  projectId: localStorage.getItem('pinecone_project_id')?.trim() || '',
-  namespace: localStorage.getItem('pinecone_namespace')?.trim() || ''
+  apiKey: getLocalStorageItem('pinecone_api_key'),
+  environment: getLocalStorageItem('pinecone_environment', 'gcp-starter'),
+  indexName: getLocalStorageItem('pinecone_index_name'),
+  projectId: getLocalStorageItem('pinecone_project_id'),
+  namespace: getLocalStorageItem('pinecone_namespace')
 };
 
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
@@ -41,21 +47,24 @@ export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
 // Validate Pinecone configuration
 export const isPineconeConfigValid = (): boolean => {
   return (
-    !!PINECONE_CONFIG.apiKey &&
-    !!PINECONE_CONFIG.indexName &&
-    !!PINECONE_CONFIG.projectId
+    !!PINECONE_CONFIG.apiKey && 
+    PINECONE_CONFIG.apiKey.trim() !== '' &&
+    !!PINECONE_CONFIG.indexName && 
+    PINECONE_CONFIG.indexName.trim() !== '' &&
+    !!PINECONE_CONFIG.projectId && 
+    PINECONE_CONFIG.projectId.trim() !== ''
   );
 };
 
 // Get a helpful error message if config is invalid
 export const getPineconeConfigError = (): string | null => {
-  if (!PINECONE_CONFIG.apiKey) {
+  if (!PINECONE_CONFIG.apiKey || PINECONE_CONFIG.apiKey.trim() === '') {
     return 'Pinecone API key is missing. Please configure it in settings.';
   }
-  if (!PINECONE_CONFIG.indexName) {
+  if (!PINECONE_CONFIG.indexName || PINECONE_CONFIG.indexName.trim() === '') {
     return 'Pinecone index name is missing. Please configure it in settings.';
   }
-  if (!PINECONE_CONFIG.projectId) {
+  if (!PINECONE_CONFIG.projectId || PINECONE_CONFIG.projectId.trim() === '') {
     return 'Pinecone project ID is missing. Please configure it in settings.';
   }
   return null;

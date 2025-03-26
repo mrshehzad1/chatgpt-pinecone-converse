@@ -33,10 +33,24 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     
     // Clean and prepare API key
     const apiKey = PINECONE_CONFIG.apiKey.trim();
+    console.log('Using Pinecone API key:', apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 3));
     
     // Prepare the request to Pinecone
     const url = `https://${PINECONE_CONFIG.indexName}-${PINECONE_CONFIG.projectId}.svc.${PINECONE_CONFIG.environment}.pinecone.io/query`;
     console.log(`Making request to Pinecone at: ${url}`);
+    
+    const requestBody = {
+      vector: embedding,
+      topK: topK,
+      includeMetadata: true,
+      includeValues: false,
+      namespace: PINECONE_CONFIG.namespace ? PINECONE_CONFIG.namespace.trim() : ''
+    };
+    
+    console.log('Request headers:', {
+      'Api-Key': 'REDACTED', // Don't log the actual key
+      'Content-Type': 'application/json'
+    });
     
     const response = await fetch(url, {
       method: 'POST',
@@ -44,17 +58,12 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         'Api-Key': apiKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        vector: embedding,
-        topK: topK,
-        includeMetadata: true,
-        includeValues: false,
-        namespace: PINECONE_CONFIG.namespace ? PINECONE_CONFIG.namespace.trim() : ''
-      }),
+      body: JSON.stringify(requestBody),
     });
     
     if (!response.ok) {
       let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
+      console.error('Response status:', response.status, response.statusText);
       
       // Handle 401 Unauthorized error specifically
       if (response.status === 401) {
@@ -69,7 +78,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       // Try to parse error if possible
       try {
         const errorData = await response.json();
-        console.error('Pinecone API error:', errorData);
+        console.error('Pinecone API error data:', errorData);
         if (errorData.message) {
           errorMessage = `Pinecone API error: ${errorData.message}`;
         }
@@ -77,7 +86,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         // If we can't parse JSON, use the text response if available
         try {
           const errorText = await response.text();
-          errorMessage = `Pinecone API error: ${errorText}`;
+          console.error('Error response text:', errorText);
+          errorMessage = `Pinecone API error: ${errorText || response.statusText}`;
         } catch (textError) {
           // Fallback to status
           console.error('Could not parse error response:', textError);
