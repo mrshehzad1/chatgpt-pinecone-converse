@@ -22,11 +22,11 @@ export const PINECONE_CONFIG: PineconeConfig = {
 
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
   if (config.apiKey !== undefined) {
-    // Ensure API key is properly trimmed and doesn't have any invisible characters
-    const trimmedKey = config.apiKey.trim().replace(/\s+/g, '');
-    localStorage.setItem('pinecone_api_key', trimmedKey);
-    PINECONE_CONFIG.apiKey = trimmedKey;
-    console.log('Pinecone API key set:', `${trimmedKey.substring(0, 5)}...${trimmedKey.substring(trimmedKey.length - 3)}`);
+    // IMPORTANT: Remove ALL whitespace from API key
+    const cleanKey = config.apiKey.replace(/\s+/g, '');
+    localStorage.setItem('pinecone_api_key', cleanKey);
+    PINECONE_CONFIG.apiKey = cleanKey;
+    console.log('Pinecone API key set:', `${cleanKey.substring(0, 5)}...${cleanKey.substring(cleanKey.length - 3)}`);
   }
   
   if (config.environment !== undefined) {
@@ -85,9 +85,15 @@ export const getPineconeConfigError = (): string | null => {
   return null;
 };
 
-// Export a function to get a sanitized API key
+// Export a function to get a sanitized API key - All whitespace removed
 export const getSanitizedPineconeApiKey = (): string => {
-  const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
-  // Remove any whitespace or invisible characters
+  const apiKey = PINECONE_CONFIG.apiKey || '';
+  // Remove ANY whitespace or invisible characters
   return apiKey.replace(/\s+/g, '');
+};
+
+// Get the full Pinecone host URL
+export const getPineconeHostUrl = (): string => {
+  const { indexName, projectId, environment } = PINECONE_CONFIG;
+  return `https://${indexName}-${projectId}.svc.${environment}.pinecone.io`;
 };
