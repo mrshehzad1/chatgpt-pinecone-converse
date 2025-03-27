@@ -7,7 +7,15 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Create a new QueryClient with retry options
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1, // Only retry once by default
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -27,7 +35,7 @@ const App = () => (
         duration={10000}
         toastOptions={{
           style: { 
-            zIndex: 999999, // Ensure visibility above everything
+            zIndex: 9999999, // Ensure visibility above everything
             maxWidth: '500px',
             wordBreak: 'break-word'
           }

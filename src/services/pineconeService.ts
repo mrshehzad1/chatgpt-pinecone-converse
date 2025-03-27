@@ -1,5 +1,5 @@
 
-import { PINECONE_CONFIG, getSanitizedPineconeApiKey, getPineconeHostUrl } from '@/config/pinecone';
+import { PINECONE_CONFIG, getSanitizedPineconeApiKey, getPineconeHostUrl, testPineconeConnection } from '@/config/pinecone';
 import { ApiError, Source } from '@/types';
 import { queryToEmbedding } from './embeddingService';
 import { toast } from 'sonner';
@@ -9,13 +9,15 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
   console.log(`Searching Pinecone index "${PINECONE_CONFIG.indexName}" for: ${query}`);
   
   try {
-    // Validate Pinecone configuration
-    if (!PINECONE_CONFIG.apiKey || PINECONE_CONFIG.apiKey.trim() === '') {
-      throw new Error('Pinecone API key is missing. Please configure it in settings.');
-    }
-    
-    if (!PINECONE_CONFIG.indexName || !PINECONE_CONFIG.projectId) {
-      throw new Error('Pinecone index name or project ID is missing. Please configure in settings.');
+    // First test the connection to Pinecone
+    const testResult = await testPineconeConnection();
+    if (!testResult.success) {
+      console.error('Pinecone connection test failed:', testResult.message);
+      toast.error("Pinecone Connection Failed", {
+        description: testResult.message,
+        duration: 10000,
+      });
+      throw new Error(`Pinecone connection failed: ${testResult.message}`);
     }
     
     // Convert query to embedding
@@ -30,7 +32,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const queryUrl = `${host}/query`;
     console.log(`Making request to Pinecone at: ${queryUrl}`);
     
-    // Prepare request body following the official Pinecone format shown in example
+    // Prepare request body following the official Pinecone format from the example
     const requestBody: any = {
       vector: embedding,
       topK: topK,
@@ -52,7 +54,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request with proper headers
+    // Make the query request with proper headers - using exact same format as the working example
     const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {
@@ -117,7 +119,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const data = await response.json();
     console.log('Pinecone response matches count:', data.matches?.length || 0);
     
-    // Transform Pinecone results into Source objects (match format from example)
+    // Transform Pinecone results into Source objects - using same format as example
     if (!data.matches || !Array.isArray(data.matches)) {
       console.warn('Unexpected Pinecone response format:', data);
       return [];
@@ -127,8 +129,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       .filter((match: any) => match.score >= similarityThreshold)
       .map((match: any) => ({
         id: match.id,
-        title: match.metadata?.title || match.metadata?.category || 'Document ' + match.id.substring(0, 8),
-        content: match.metadata?.content || match.metadata?.chunk_text || match.metadata?.text || 'No content available',
+        title: match.metadata?.category || match.metadata?.title || 'Document ' + match.id.substring(0, 8),
+        content: match.metadata?.chunk_text || match.metadata?.text || match.metadata?.content || 'No content available',
         similarity: match.score,
         url: match.metadata?.url || null
       }));

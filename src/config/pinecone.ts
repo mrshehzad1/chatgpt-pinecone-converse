@@ -1,3 +1,4 @@
+
 import { PineconeConfig } from '@/types';
 
 // Helper function to safely get and trim localStorage values
@@ -96,4 +97,65 @@ export const getSanitizedPineconeApiKey = (): string => {
 export const getPineconeHostUrl = (): string => {
   const { indexName, projectId, environment } = PINECONE_CONFIG;
   return `https://${indexName}-${projectId}.svc.${environment}.pinecone.io`;
+};
+
+// Add a function to test Pinecone connection (similar to the example code)
+export const testPineconeConnection = async (): Promise<{success: boolean; message: string; details?: any}> => {
+  try {
+    // Verify we have the required configuration
+    if (!isPineconeConfigValid()) {
+      const error = getPineconeConfigError();
+      return {
+        success: false,
+        message: error || 'Invalid Pinecone configuration',
+      };
+    }
+    
+    // Get sanitized API key
+    const apiKey = getSanitizedPineconeApiKey();
+    
+    // Get the host URL
+    const host = getPineconeHostUrl();
+    const statsUrl = `${host}/describe_index_stats`;
+    
+    console.log(`Testing Pinecone connection to: ${statsUrl}`);
+    
+    // Make a describe index stats request to test connection
+    const response = await fetch(statsUrl, {
+      method: 'POST',
+      headers: {
+        'Api-Key': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({}) // Empty body for describe_index_stats
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Pinecone connection test failed:', response.status, errorText);
+      
+      return {
+        success: false,
+        message: `Connection failed: ${response.status} ${response.statusText}`,
+        details: errorText
+      };
+    }
+    
+    const data = await response.json();
+    console.log('Pinecone connection test succeeded:', data);
+    
+    return {
+      success: true,
+      message: 'Successfully connected to Pinecone',
+      details: data
+    };
+  } catch (error: any) {
+    console.error('Pinecone connection test error:', error);
+    return {
+      success: false,
+      message: `Connection error: ${error.message}`,
+      details: error
+    };
+  }
 };
