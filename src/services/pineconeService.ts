@@ -9,10 +9,10 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
   console.log(`Searching Pinecone index "${PINECONE_CONFIG.indexName}" for: ${query}`);
   
   try {
-    // First test the connection to Pinecone
-    const testResult = await testPineconeConnection();
+    // First test the connection to Pinecone with retry logic
+    const testResult = await testPineconeConnection(3, 1000);
     if (!testResult.success) {
-      console.error('Pinecone connection test failed:', testResult.message);
+      console.error('Pinecone connection test failed:', testResult.message, testResult.details);
       toast.error("Pinecone Connection Failed", {
         description: testResult.message,
         duration: 10000,

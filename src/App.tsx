@@ -11,8 +11,13 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1, // Only retry once by default
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+      retry: 3, // Retry 3 times when requests fail
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff capped at 30 seconds
+      staleTime: 5 * 60 * 1000, // Data considered fresh for 5 minutes
+    },
+    mutations: {
+      retry: 2, // Retry mutations twice
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000), // Exponential backoff capped at 15 seconds
     },
   },
 });

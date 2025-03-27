@@ -24,7 +24,8 @@ export const PINECONE_CONFIG: PineconeConfig = {
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
   if (config.apiKey !== undefined) {
     // CRITICAL: Remove ALL whitespace, newlines, and invisible characters from API key
-    const cleanKey = config.apiKey.replace(/\s+/g, '');
+    // This handles all possible whitespace characters in Unicode
+    const cleanKey = config.apiKey.replace(/\s+/g, '').trim();
     localStorage.setItem('pinecone_api_key', cleanKey);
     PINECONE_CONFIG.apiKey = cleanKey;
     console.log('Pinecone API key set:', `${cleanKey.substring(0, 5)}...${cleanKey.substring(cleanKey.length - 3)}`);
@@ -90,7 +91,7 @@ export const getPineconeConfigError = (): string | null => {
 export const getSanitizedPineconeApiKey = (): string => {
   const apiKey = PINECONE_CONFIG.apiKey || '';
   // Remove ANY whitespace or invisible characters that could cause auth failures
-  return apiKey.replace(/\s+/g, '');
+  return apiKey.replace(/\s+/g, '').trim();
 };
 
 // Get the full Pinecone host URL formatted according to Pinecone documentation
@@ -99,63 +100,90 @@ export const getPineconeHostUrl = (): string => {
   return `https://${indexName}-${projectId}.svc.${environment}.pinecone.io`;
 };
 
-// Add a function to test Pinecone connection (similar to the example code)
-export const testPineconeConnection = async (): Promise<{success: boolean; message: string; details?: any}> => {
-  try {
-    // Verify we have the required configuration
-    if (!isPineconeConfigValid()) {
-      const error = getPineconeConfigError();
+// Add a function to test Pinecone connection with retry logic
+export const testPineconeConnection = async (retries = 3, delay = 1000): Promise<{success: boolean; message: string; details?: any}> => {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      // Verify we have the required configuration
+      if (!isPineconeConfigValid()) {
+        const error = getPineconeConfigError();
+        return {
+          success: false,
+          message: error || 'Invalid Pinecone configuration',
+        };
+      }
+      
+      // Get sanitized API key with ALL whitespace removed
+      const apiKey = getSanitizedPineconeApiKey();
+      
+      // Get the host URL
+      const host = getPineconeHostUrl();
+      const statsUrl = `${host}/describe_index_stats`;
+      
+      console.log(`Testing Pinecone connection to: ${statsUrl} (attempt ${attempt + 1}/${retries})`);
+      
+      // Make a describe index stats request to test connection
+      const response = await fetch(statsUrl, {
+        method: 'POST',
+        headers: {
+          'Api-Key': apiKey,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({}) // Empty body for describe_index_stats
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Pinecone connection test failed (attempt ${attempt + 1}):`, response.status, errorText);
+        
+        // If we have more retries, wait and try again
+        if (attempt < retries - 1) {
+          console.log(`Retrying in ${delay/1000} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          // Exponential backoff
+          delay *= 2;
+          continue;
+        }
+        
+        return {
+          success: false,
+          message: `Connection failed: ${response.status} ${response.statusText}`,
+          details: errorText
+        };
+      }
+      
+      const data = await response.json();
+      console.log('Pinecone connection test succeeded:', data);
+      
       return {
-        success: false,
-        message: error || 'Invalid Pinecone configuration',
+        success: true,
+        message: 'Successfully connected to Pinecone',
+        details: data
       };
-    }
-    
-    // Get sanitized API key
-    const apiKey = getSanitizedPineconeApiKey();
-    
-    // Get the host URL
-    const host = getPineconeHostUrl();
-    const statsUrl = `${host}/describe_index_stats`;
-    
-    console.log(`Testing Pinecone connection to: ${statsUrl}`);
-    
-    // Make a describe index stats request to test connection
-    const response = await fetch(statsUrl, {
-      method: 'POST',
-      headers: {
-        'Api-Key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({}) // Empty body for describe_index_stats
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Pinecone connection test failed:', response.status, errorText);
+    } catch (error: any) {
+      console.error(`Pinecone connection test error (attempt ${attempt + 1}):`, error);
+      
+      // If we have more retries, wait and try again
+      if (attempt < retries - 1) {
+        console.log(`Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        // Exponential backoff
+        delay *= 2;
+        continue;
+      }
       
       return {
         success: false,
-        message: `Connection failed: ${response.status} ${response.statusText}`,
-        details: errorText
+        message: `Connection error: ${error.message}`,
+        details: error
       };
     }
-    
-    const data = await response.json();
-    console.log('Pinecone connection test succeeded:', data);
-    
-    return {
-      success: true,
-      message: 'Successfully connected to Pinecone',
-      details: data
-    };
-  } catch (error: any) {
-    console.error('Pinecone connection test error:', error);
-    return {
-      success: false,
-      message: `Connection error: ${error.message}`,
-      details: error
-    };
   }
+  
+  // This should never be reached but TypeScript requires a return
+  return {
+    success: false,
+    message: `Failed to connect after ${retries} attempts`,
+  };
 };
