@@ -18,7 +18,17 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-      <Sonner position="top-center" expand={true} closeButton={true} richColors />
+      {/* Sonner toast must be outside of any container with z-index, so it's visible */}
+      <Sonner 
+        position="top-center" 
+        expand={true} 
+        closeButton={true} 
+        richColors 
+        duration={5000}
+        toastOptions={{
+          style: { zIndex: 9999 }
+        }}
+      />
       <Toaster />
     </TooltipProvider>
   </QueryClientProvider>

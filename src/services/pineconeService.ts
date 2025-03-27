@@ -1,5 +1,5 @@
 
-import { PINECONE_CONFIG } from '@/config/pinecone';
+import { PINECONE_CONFIG, getSanitizedPineconeApiKey } from '@/config/pinecone';
 import { ApiError, Source } from '@/types';
 import { queryToEmbedding } from './embeddingService';
 import { toast } from 'sonner';
@@ -31,14 +31,32 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     // Convert query to embedding
     const embedding = await queryToEmbedding(query);
     
-    // Clean and prepare API key
-    const apiKey = PINECONE_CONFIG.apiKey.trim();
+    // Get sanitized API key
+    const apiKey = getSanitizedPineconeApiKey();
     console.log('Using Pinecone API key:', apiKey.substring(0, 5) + '...' + apiKey.substring(apiKey.length - 3));
     
-    // Prepare the request to Pinecone
-    const url = `https://${PINECONE_CONFIG.indexName}-${PINECONE_CONFIG.projectId}.svc.${PINECONE_CONFIG.environment}.pinecone.io/query`;
+    // Prepare the request URL
+    const baseUrl = `https://${PINECONE_CONFIG.indexName}-${PINECONE_CONFIG.projectId}.svc.${PINECONE_CONFIG.environment}.pinecone.io`;
+    const url = `${baseUrl}/query`;
     console.log(`Making request to Pinecone at: ${url}`);
     
+    // First, test the connection with a lightweight OPTIONS request
+    try {
+      const testResponse = await fetch(baseUrl, {
+        method: 'OPTIONS',
+        headers: { 'Api-Key': apiKey }
+      });
+      
+      console.log('Pinecone connection test response:', testResponse.status);
+      
+      if (!testResponse.ok) {
+        console.error('Pinecone connection test failed:', testResponse.status, testResponse.statusText);
+      }
+    } catch (testError) {
+      console.error('Pinecone connection test error:', testError);
+    }
+    
+    // Prepare request body
     const requestBody = {
       vector: embedding,
       topK: topK,
@@ -47,20 +65,25 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace ? PINECONE_CONFIG.namespace.trim() : ''
     };
     
+    // Log request info (without actual API key)
     console.log('Request headers:', {
-      'Api-Key': 'REDACTED', // Don't log the actual key
+      'Api-Key': 'REDACTED', 
       'Content-Type': 'application/json'
     });
+    console.log('Request body:', JSON.stringify(requestBody).substring(0, 200) + '...');
     
+    // Make the actual query request
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Api-Key': apiKey,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify(requestBody),
     });
     
+    // Handle errors
     if (!response.ok) {
       let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
       console.error('Response status:', response.status, response.statusText);
@@ -70,16 +93,18 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         errorMessage = 'Pinecone authorization failed: Invalid API key or permissions';
         console.error(errorMessage);
         toast.error("Pinecone authorization failed", {
-          description: "Invalid API key or permissions. Please check your API key in settings."
+          description: "Please check your API key in settings. Make sure it's current and has the correct permissions.",
+          duration: 8000,
         });
+        
         throw new Error(errorMessage);
       }
       
-      // Try to parse error if possible
+      // Try to parse error response
       try {
         const errorData = await response.json();
         console.error('Pinecone API error data:', errorData);
-        if (errorData.message) {
+        if (errorData && errorData.message) {
           errorMessage = `Pinecone API error: ${errorData.message}`;
         }
       } catch (parseError) {
@@ -95,13 +120,15 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       }
       
       toast.error("Pinecone API Error", {
-        description: errorMessage
+        description: errorMessage,
+        duration: 5000,
       });
       throw new Error(errorMessage);
     }
     
+    // Parse and return successful response
     const data = await response.json();
-    console.log('Pinecone response:', data);
+    console.log('Pinecone response (truncated):', JSON.stringify(data).substring(0, 200) + '...');
     
     // Transform Pinecone results into Source objects
     if (!data.matches || !Array.isArray(data.matches)) {
@@ -126,7 +153,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     
     // We'll use sonner toast instead of the older toast component
     toast.error("Pinecone Search Error", {
-      description: error.message || "Failed to search vector database"
+      description: error.message || "Failed to search vector database",
+      duration: 6000,
     });
     
     throw {

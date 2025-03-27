@@ -1,10 +1,14 @@
-
 import { PineconeConfig } from '@/types';
 
 // Helper function to safely get and trim localStorage values
 const getLocalStorageItem = (key: string, defaultValue: string = ''): string => {
-  const value = localStorage.getItem(key);
-  return value ? value.trim() : defaultValue;
+  try {
+    const value = localStorage.getItem(key);
+    return value ? value.trim() : defaultValue;
+  } catch (error) {
+    console.error(`Error accessing localStorage for ${key}:`, error);
+    return defaultValue;
+  }
 };
 
 // Pinecone configuration
@@ -18,25 +22,31 @@ export const PINECONE_CONFIG: PineconeConfig = {
 
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
   if (config.apiKey !== undefined) {
-    const trimmedKey = config.apiKey.trim();
+    // Ensure API key is properly trimmed and doesn't have any invisible characters
+    const trimmedKey = config.apiKey.trim().replace(/\s+/g, '');
     localStorage.setItem('pinecone_api_key', trimmedKey);
     PINECONE_CONFIG.apiKey = trimmedKey;
+    console.log('Pinecone API key set:', `${trimmedKey.substring(0, 5)}...${trimmedKey.substring(trimmedKey.length - 3)}`);
   }
+  
   if (config.environment !== undefined) {
     const trimmedEnv = config.environment.trim();
     localStorage.setItem('pinecone_environment', trimmedEnv);
     PINECONE_CONFIG.environment = trimmedEnv;
   }
+  
   if (config.indexName !== undefined) {
     const trimmedIndex = config.indexName.trim();
     localStorage.setItem('pinecone_index_name', trimmedIndex);
     PINECONE_CONFIG.indexName = trimmedIndex;
   }
+  
   if (config.projectId !== undefined) {
     const trimmedProject = config.projectId.trim();
     localStorage.setItem('pinecone_project_id', trimmedProject);
     PINECONE_CONFIG.projectId = trimmedProject;
   }
+  
   if (config.namespace !== undefined) {
     const trimmedNamespace = config.namespace.trim();
     localStorage.setItem('pinecone_namespace', trimmedNamespace);
@@ -46,26 +56,38 @@ export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
 
 // Validate Pinecone configuration
 export const isPineconeConfigValid = (): boolean => {
+  const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
+  const indexName = PINECONE_CONFIG.indexName?.trim() || '';
+  const projectId = PINECONE_CONFIG.projectId?.trim() || '';
+  
   return (
-    !!PINECONE_CONFIG.apiKey && 
-    PINECONE_CONFIG.apiKey.trim() !== '' &&
-    !!PINECONE_CONFIG.indexName && 
-    PINECONE_CONFIG.indexName.trim() !== '' &&
-    !!PINECONE_CONFIG.projectId && 
-    PINECONE_CONFIG.projectId.trim() !== ''
+    apiKey !== '' && 
+    indexName !== '' && 
+    projectId !== ''
   );
 };
 
 // Get a helpful error message if config is invalid
 export const getPineconeConfigError = (): string | null => {
-  if (!PINECONE_CONFIG.apiKey || PINECONE_CONFIG.apiKey.trim() === '') {
+  const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
+  const indexName = PINECONE_CONFIG.indexName?.trim() || '';
+  const projectId = PINECONE_CONFIG.projectId?.trim() || '';
+  
+  if (apiKey === '') {
     return 'Pinecone API key is missing. Please configure it in settings.';
   }
-  if (!PINECONE_CONFIG.indexName || PINECONE_CONFIG.indexName.trim() === '') {
+  if (indexName === '') {
     return 'Pinecone index name is missing. Please configure it in settings.';
   }
-  if (!PINECONE_CONFIG.projectId || PINECONE_CONFIG.projectId.trim() === '') {
+  if (projectId === '') {
     return 'Pinecone project ID is missing. Please configure it in settings.';
   }
   return null;
+};
+
+// Export a function to get a sanitized API key
+export const getSanitizedPineconeApiKey = (): string => {
+  const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
+  // Remove any whitespace or invisible characters
+  return apiKey.replace(/\s+/g, '');
 };
