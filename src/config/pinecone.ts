@@ -22,7 +22,7 @@ export const PINECONE_CONFIG: PineconeConfig = {
 
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
   if (config.apiKey !== undefined) {
-    // IMPORTANT: Remove ALL whitespace from API key
+    // CRITICAL: Remove ALL whitespace, newlines, and invisible characters from API key
     const cleanKey = config.apiKey.replace(/\s+/g, '');
     localStorage.setItem('pinecone_api_key', cleanKey);
     PINECONE_CONFIG.apiKey = cleanKey;
@@ -85,14 +85,14 @@ export const getPineconeConfigError = (): string | null => {
   return null;
 };
 
-// Export a function to get a sanitized API key - All whitespace removed
+// Export a function to get a sanitized API key - All whitespace and invisible characters removed
 export const getSanitizedPineconeApiKey = (): string => {
   const apiKey = PINECONE_CONFIG.apiKey || '';
-  // Remove ANY whitespace or invisible characters
+  // Remove ANY whitespace or invisible characters that could cause auth failures
   return apiKey.replace(/\s+/g, '');
 };
 
-// Get the full Pinecone host URL
+// Get the full Pinecone host URL formatted according to Pinecone documentation
 export const getPineconeHostUrl = (): string => {
   const { indexName, projectId, environment } = PINECONE_CONFIG;
   return `https://${indexName}-${projectId}.svc.${environment}.pinecone.io`;

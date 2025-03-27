@@ -21,7 +21,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     // Convert query to embedding
     const embedding = await queryToEmbedding(query);
     
-    // Get sanitized API key - MUST have no whitespace
+    // Get sanitized API key with ALL whitespace removed - CRITICAL for authorization
     const apiKey = getSanitizedPineconeApiKey();
     console.log('Using Pinecone API key:', `${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 3)}`);
     
@@ -30,8 +30,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const queryUrl = `${host}/query`;
     console.log(`Making request to Pinecone at: ${queryUrl}`);
     
-    // Prepare request body - following the official Pinecone format
-    const requestBody = {
+    // Prepare request body following the official Pinecone format shown in example
+    const requestBody: any = {
       vector: embedding,
       topK: topK,
       includeMetadata: true,
@@ -40,7 +40,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     
     // Add namespace only if it exists and isn't empty
     if (PINECONE_CONFIG.namespace && PINECONE_CONFIG.namespace.trim() !== '') {
-      requestBody['namespace'] = PINECONE_CONFIG.namespace.trim();
+      requestBody.namespace = PINECONE_CONFIG.namespace.trim();
     }
     
     // Log request info (without actual API key)
@@ -52,11 +52,11 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request
+    // Make the query request with proper headers
     const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {
-        'Api-Key': apiKey,
+        'Api-Key': apiKey, // Use EXACTLY 'Api-Key' as header name (case sensitive)
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
@@ -67,6 +67,14 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     if (!response.ok) {
       console.error('Pinecone error response status:', response.status, response.statusText);
       
+      let errorBody = '';
+      try {
+        errorBody = await response.text();
+        console.error('Pinecone error response body:', errorBody);
+      } catch (e) {
+        console.error('Could not read error response body');
+      }
+      
       // Handle 401 Unauthorized error specifically
       if (response.status === 401) {
         const errorMessage = 'Pinecone authorization failed: Invalid API key or permissions';
@@ -74,8 +82,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         
         // Show detailed toast with helpful instructions
         toast.error("Pinecone Authorization Failed", {
-          description: "Please check that your API key is correct, hasn't expired, and has query permissions for this index.",
-          duration: 8000,
+          description: "Double check that your API key is correct, hasn't expired, and has query permissions for this index. Make sure it has no extra spaces or invisible characters.",
+          duration: 10000,
         });
         
         throw new Error(errorMessage);
@@ -84,10 +92,13 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       // Try to parse error response
       let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
       try {
-        const errorData = await response.json();
-        console.error('Pinecone API error data:', errorData);
-        if (errorData && errorData.message) {
-          errorMessage = `Pinecone API error: ${errorData.message}`;
+        // Only try to parse as JSON if the response looks like JSON
+        if (errorBody.trim().startsWith('{')) {
+          const errorData = JSON.parse(errorBody);
+          console.error('Pinecone API error data:', errorData);
+          if (errorData && errorData.message) {
+            errorMessage = `Pinecone API error: ${errorData.message}`;
+          }
         }
       } catch (parseError) {
         // If we can't parse JSON, log and continue with the status error
@@ -96,7 +107,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       
       toast.error("Pinecone API Error", {
         description: errorMessage,
-        duration: 5000,
+        duration: 8000,
       });
       
       throw new Error(errorMessage);
@@ -106,7 +117,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const data = await response.json();
     console.log('Pinecone response matches count:', data.matches?.length || 0);
     
-    // Transform Pinecone results into Source objects
+    // Transform Pinecone results into Source objects (match format from example)
     if (!data.matches || !Array.isArray(data.matches)) {
       console.warn('Unexpected Pinecone response format:', data);
       return [];
@@ -116,8 +127,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       .filter((match: any) => match.score >= similarityThreshold)
       .map((match: any) => ({
         id: match.id,
-        title: match.metadata?.title || 'Document ' + match.id.substring(0, 8),
-        content: match.metadata?.content || match.metadata?.text || match.metadata?.chunk_text || 'No content available',
+        title: match.metadata?.title || match.metadata?.category || 'Document ' + match.id.substring(0, 8),
+        content: match.metadata?.content || match.metadata?.chunk_text || match.metadata?.text || 'No content available',
         similarity: match.score,
         url: match.metadata?.url || null
       }));
@@ -130,7 +141,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     
     toast.error("Pinecone Search Error", {
       description: error.message || "Failed to search vector database",
-      duration: 6000,
+      duration: 8000,
     });
     
     throw {

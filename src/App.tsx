@@ -24,11 +24,11 @@ const App = () => (
         expand={true} 
         closeButton={true} 
         richColors 
-        duration={8000}
+        duration={10000}
         toastOptions={{
           style: { 
-            zIndex: 100000,
-            maxWidth: '450px',
+            zIndex: 999999, // Ensure visibility above everything
+            maxWidth: '500px',
             wordBreak: 'break-word'
           }
         }}
