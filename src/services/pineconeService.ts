@@ -5,7 +5,7 @@ import { queryToEmbedding } from './embeddingService';
 import { toast } from 'sonner';
 
 // Search Pinecone index for similar documents
-export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.7): Promise<Source[]> => {
+export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.6): Promise<Source[]> => {
   console.log(`Searching Pinecone index "${PINECONE_CONFIG.indexName}" for: ${query}`);
   
   try {
@@ -131,6 +131,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       return [];
     }
     
+    // IMPORTANT: Lower the filtering threshold to include more results that may be relevant
+    // but don't have extremely high similarity scores
     const results: Source[] = data.matches
       .filter((match: any) => match.score >= similarityThreshold)
       .map((match: any) => ({
