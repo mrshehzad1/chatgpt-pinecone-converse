@@ -107,8 +107,7 @@ export const testPineconeConnection = async (retries = 3, delay = 1000): Promise
       
       console.log(`Testing Pinecone connection (attempt ${attempt + 1}/${retries})`);
       
-      // MAJOR CHANGE: Using the format from the working example
-      // Instead of using the index-stats endpoint, use describeIndex
+      // Use the describe index endpoint to get host information
       const response = await fetch(`https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}`, {
         method: 'GET',
         headers: {
@@ -139,6 +138,15 @@ export const testPineconeConnection = async (retries = 3, delay = 1000): Promise
       
       const data = await response.json();
       console.log('Pinecone connection test succeeded:', data);
+      
+      // Validate that the host field exists in the response
+      if (!data.host) {
+        return {
+          success: false,
+          message: 'Pinecone API response did not include host information',
+          details: data
+        };
+      }
       
       return {
         success: true,

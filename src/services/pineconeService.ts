@@ -27,8 +27,15 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const apiKey = getSanitizedPineconeApiKey();
     console.log('Using Pinecone API key:', `${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 3)}`);
     
-    // IMPORTANT CHANGE: Using the direct query endpoint format that worked in the example
-    const queryUrl = `https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}/query`;
+    // Get the host from the describe index result
+    const indexInfo = testResult.details;
+    if (!indexInfo || !indexInfo.host) {
+      throw new Error('Could not get Pinecone index host information');
+    }
+    
+    // Use the actual host from describe index response instead of api.pinecone.io
+    const host = indexInfo.host;
+    const queryUrl = `https://${host}/query`;
     console.log(`Making request to Pinecone at: ${queryUrl}`);
     
     // Prepare request body following the official Pinecone format from the example
@@ -53,7 +60,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request with proper headers - using the format that worked in the example
+    // Make the query request with proper headers - using the direct host URL
     const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {
