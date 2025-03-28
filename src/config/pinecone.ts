@@ -105,11 +105,11 @@ export const testPineconeConnection = async (retries = 3, delay = 1000): Promise
       // Get sanitized API key with ALL whitespace removed
       const apiKey = getSanitizedPineconeApiKey();
       
-      // Make a describe index stats request to test connection - using new Pinecone format
       console.log(`Testing Pinecone connection (attempt ${attempt + 1}/${retries})`);
       
-      // Use the index-stats endpoint which matches the working example
-      const response = await fetch(`https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}/stats`, {
+      // MAJOR CHANGE: Using the format from the working example
+      // Instead of using the index-stats endpoint, use describeIndex
+      const response = await fetch(`https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}`, {
         method: 'GET',
         headers: {
           'Api-Key': apiKey,
