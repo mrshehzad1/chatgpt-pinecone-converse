@@ -1,5 +1,6 @@
 
 import { PineconeConfig } from '@/types';
+import { toast } from 'sonner';
 
 // Helper function to safely get and trim localStorage values
 const getLocalStorageItem = (key: string, defaultValue: string = ''): string => {
@@ -60,12 +61,10 @@ export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
 export const isPineconeConfigValid = (): boolean => {
   const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
   const indexName = PINECONE_CONFIG.indexName?.trim() || '';
-  const projectId = PINECONE_CONFIG.projectId?.trim() || '';
   
   return (
     apiKey !== '' && 
-    indexName !== '' && 
-    projectId !== ''
+    indexName !== ''
   );
 };
 
@@ -73,16 +72,12 @@ export const isPineconeConfigValid = (): boolean => {
 export const getPineconeConfigError = (): string | null => {
   const apiKey = PINECONE_CONFIG.apiKey?.trim() || '';
   const indexName = PINECONE_CONFIG.indexName?.trim() || '';
-  const projectId = PINECONE_CONFIG.projectId?.trim() || '';
   
   if (apiKey === '') {
     return 'Pinecone API key is missing. Please configure it in settings.';
   }
   if (indexName === '') {
     return 'Pinecone index name is missing. Please configure it in settings.';
-  }
-  if (projectId === '') {
-    return 'Pinecone project ID is missing. Please configure it in settings.';
   }
   return null;
 };
@@ -92,12 +87,6 @@ export const getSanitizedPineconeApiKey = (): string => {
   const apiKey = PINECONE_CONFIG.apiKey || '';
   // Remove ANY whitespace or invisible characters that could cause auth failures
   return apiKey.replace(/\s+/g, '').trim();
-};
-
-// Get the full Pinecone host URL formatted according to Pinecone documentation
-export const getPineconeHostUrl = (): string => {
-  const { indexName, projectId, environment } = PINECONE_CONFIG;
-  return `https://${indexName}-${projectId}.svc.${environment}.pinecone.io`;
 };
 
 // Add a function to test Pinecone connection with retry logic
@@ -116,21 +105,16 @@ export const testPineconeConnection = async (retries = 3, delay = 1000): Promise
       // Get sanitized API key with ALL whitespace removed
       const apiKey = getSanitizedPineconeApiKey();
       
-      // Get the host URL
-      const host = getPineconeHostUrl();
-      const statsUrl = `${host}/describe_index_stats`;
+      // Make a describe index stats request to test connection - using new Pinecone format
+      console.log(`Testing Pinecone connection (attempt ${attempt + 1}/${retries})`);
       
-      console.log(`Testing Pinecone connection to: ${statsUrl} (attempt ${attempt + 1}/${retries})`);
-      
-      // Make a describe index stats request to test connection
-      const response = await fetch(statsUrl, {
-        method: 'POST',
+      // Use the index-stats endpoint which matches the working example
+      const response = await fetch(`https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}/stats`, {
+        method: 'GET',
         headers: {
           'Api-Key': apiKey,
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify({}) // Empty body for describe_index_stats
+        }
       });
       
       if (!response.ok) {

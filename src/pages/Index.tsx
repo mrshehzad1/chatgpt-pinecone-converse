@@ -8,9 +8,10 @@ import Header from '@/components/Header';
 import { Bot, Sparkles, Settings, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOpenAIApiKey } from '@/config/openai';
-import { PINECONE_CONFIG } from '@/config/pinecone';
+import { PINECONE_CONFIG, testPineconeConnection } from '@/config/pinecone';
 import SettingsDialog from '@/components/SettingsDialog';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
@@ -18,30 +19,62 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
+  const { toast: uiToast } = useToast();
 
+  // Check configuration and test connection on load
   useEffect(() => {
-    // Load conversation history
-    const history = getConversationHistory();
-    setMessages(history);
+    const checkConfig = async () => {
+      // Load conversation history
+      const history = getConversationHistory();
+      setMessages(history);
+      
+      // Check for API keys
+      const openaiKey = getOpenAIApiKey();
+      const pineconeKey = PINECONE_CONFIG.apiKey;
+      const pineconeIndexName = PINECONE_CONFIG.indexName;
+      
+      if (!openaiKey) {
+        setConfigError("OpenAI API key is missing. Please configure it in settings.");
+        setSettingsOpen(true);
+        return;
+      } 
+      
+      if (!pineconeKey) {
+        setConfigError("Pinecone API key is missing. Please configure it in settings.");
+        setSettingsOpen(true);
+        return;
+      } 
+      
+      if (!pineconeIndexName) {
+        setConfigError("Pinecone index name is missing. Please configure it in settings.");
+        setSettingsOpen(true);
+        return;
+      }
+      
+      // Test connection if we have the required config
+      try {
+        const result = await testPineconeConnection(2, 1000);
+        if (!result.success) {
+          setConfigError(`Pinecone connection failed: ${result.message}`);
+          console.error('Pinecone connection test failed:', result);
+          
+          // Only open settings if we have all required fields but connection fails
+          if (pineconeKey && pineconeIndexName) {
+            toast.error("Pinecone Connection Failed", {
+              description: result.message
+            });
+          }
+        } else {
+          setConfigError(null);
+          console.log('Pinecone connection successful');
+        }
+      } catch (err: any) {
+        console.error('Error testing Pinecone connection:', err);
+        setConfigError(`Connection error: ${err.message}`);
+      }
+    };
     
-    // Check for API keys
-    const openaiKey = getOpenAIApiKey();
-    const pineconeKey = PINECONE_CONFIG.apiKey;
-    const pineconeProjectId = PINECONE_CONFIG.projectId;
-    
-    if (!openaiKey) {
-      setConfigError("OpenAI API key is missing. Please configure it in settings.");
-      setSettingsOpen(true);
-    } else if (!pineconeKey) {
-      setConfigError("Pinecone API key is missing. Please configure it in settings.");
-      setSettingsOpen(true);
-    } else if (!pineconeProjectId) {
-      setConfigError("Pinecone project ID is missing. Please configure it in settings.");
-      setSettingsOpen(true);
-    } else {
-      setConfigError(null);
-    }
+    checkConfig();
   }, []);
 
   useEffect(() => {
@@ -54,15 +87,12 @@ const Index = () => {
       // Check for API keys before sending
       const openaiKey = getOpenAIApiKey();
       const pineconeKey = PINECONE_CONFIG.apiKey;
-      const pineconeProjectId = PINECONE_CONFIG.projectId;
+      const pineconeIndexName = PINECONE_CONFIG.indexName;
       
-      if (!openaiKey || !pineconeKey || !pineconeProjectId) {
+      if (!openaiKey || !pineconeKey || !pineconeIndexName) {
         setSettingsOpen(true);
-        toast({
-          title: "API Configuration Required",
+        toast.error("API Configuration Required", {
           description: "Please enter your OpenAI and Pinecone API details to use the RAG system.",
-          variant: "destructive",
-          duration: 5000,
         });
         return;
       }
@@ -109,10 +139,8 @@ const Index = () => {
       });
       
     } catch (error: any) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
       });
       
       // Remove thinking message if there was an error
@@ -130,13 +158,22 @@ const Index = () => {
     setMessages([]);
   };
 
-  const handleSettingsSave = () => {
-    setConfigError(null);
-    toast({
-      title: "Settings Updated",
-      description: "Your API settings have been saved successfully.",
-      duration: 3000,
-    });
+  const handleSettingsSave = async () => {
+    // Test connection after saving settings
+    try {
+      const result = await testPineconeConnection(2, 1000);
+      if (result.success) {
+        setConfigError(null);
+        toast.success("Connection Successful", {
+          description: "Successfully connected to Pinecone index.",
+        });
+      } else {
+        setConfigError(result.message);
+      }
+    } catch (err: any) {
+      console.error('Error testing connection after settings save:', err);
+      setConfigError(err.message);
+    }
   };
 
   return (
@@ -163,7 +200,7 @@ const Index = () => {
                 Ask me anything about vector databases, semantic search, or how to build AI applications with Pinecone.
               </p>
               
-              {(!getOpenAIApiKey() || !PINECONE_CONFIG.apiKey || !PINECONE_CONFIG.projectId) && (
+              {(!getOpenAIApiKey() || !PINECONE_CONFIG.apiKey || !PINECONE_CONFIG.indexName) && (
                 <button
                   onClick={() => setSettingsOpen(true)}
                   className="mb-8 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
@@ -183,7 +220,7 @@ const Index = () => {
                   <button
                     key={i}
                     onClick={() => handleSendMessage(suggestion)}
-                    disabled={isLoading || !getOpenAIApiKey() || !PINECONE_CONFIG.projectId}
+                    disabled={isLoading || !getOpenAIApiKey() || !PINECONE_CONFIG.indexName}
                     className="text-left p-3 rounded-xl border border-border hover:bg-secondary/50 transition-colors floating-button disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span className="text-sm">{suggestion}</span>

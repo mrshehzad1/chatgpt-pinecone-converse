@@ -1,5 +1,5 @@
 
-import { PINECONE_CONFIG, getSanitizedPineconeApiKey, getPineconeHostUrl, testPineconeConnection } from '@/config/pinecone';
+import { PINECONE_CONFIG, getSanitizedPineconeApiKey, testPineconeConnection } from '@/config/pinecone';
 import { ApiError, Source } from '@/types';
 import { queryToEmbedding } from './embeddingService';
 import { toast } from 'sonner';
@@ -27,9 +27,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
     const apiKey = getSanitizedPineconeApiKey();
     console.log('Using Pinecone API key:', `${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 3)}`);
     
-    // Get the host URL
-    const host = getPineconeHostUrl();
-    const queryUrl = `${host}/query`;
+    // Using the direct query endpoint that worked in the example
+    const queryUrl = `https://api.pinecone.io/indexes/${PINECONE_CONFIG.indexName}/query`;
     console.log(`Making request to Pinecone at: ${queryUrl}`);
     
     // Prepare request body following the official Pinecone format from the example
@@ -54,7 +53,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request with proper headers - using exact same format as the working example
+    // Make the query request with proper headers - using the working example format
     const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {

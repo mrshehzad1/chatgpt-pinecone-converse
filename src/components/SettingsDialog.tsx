@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { setPineconeConfig, PINECONE_CONFIG } from '@/config/pinecone';
+import { setPineconeConfig, PINECONE_CONFIG, testPineconeConnection } from '@/config/pinecone';
 import { setOpenAIApiKey, getOpenAIApiKey } from '@/config/openai';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, HelpCircle, Info } from 'lucide-react';
+import { AlertCircle, HelpCircle, Info, CheckCircle, Loader2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SettingsDialogProps {
@@ -19,23 +19,22 @@ interface SettingsDialogProps {
 
 const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onSave }) => {
   const [pineconeApiKey, setPineconeApiKey] = useState(PINECONE_CONFIG.apiKey);
-  const [pineconeEnvironment, setPineconeEnvironment] = useState(PINECONE_CONFIG.environment);
   const [pineconeIndexName, setPineconeIndexName] = useState(PINECONE_CONFIG.indexName);
-  const [pineconeProjectId, setPineconeProjectId] = useState(PINECONE_CONFIG.projectId);
   const [pineconeNamespace, setPineconeNamespace] = useState(PINECONE_CONFIG.namespace || '');
   const [openaiApiKey, setOpenaiApiKey] = useState(getOpenAIApiKey());
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
   
   // Update form fields when config changes externally
   useEffect(() => {
     if (open) {
       setPineconeApiKey(PINECONE_CONFIG.apiKey);
-      setPineconeEnvironment(PINECONE_CONFIG.environment);
       setPineconeIndexName(PINECONE_CONFIG.indexName);
-      setPineconeProjectId(PINECONE_CONFIG.projectId);
       setPineconeNamespace(PINECONE_CONFIG.namespace || '');
       setOpenaiApiKey(getOpenAIApiKey());
       setValidationError(null);
+      setConnectionStatus('untested');
     }
   }, [open]);
 
@@ -55,13 +54,53 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
       return false;
     }
     
-    if (!pineconeProjectId || pineconeProjectId.trim() === '') {
-      setValidationError("Pinecone project ID is required");
-      return false;
-    }
-    
     setValidationError(null);
     return true;
+  };
+
+  const handleTestConnection = async () => {
+    if (!validateForm()) {
+      return;
+    }
+    
+    // Save temporary settings for testing
+    const tempPineconeConfig = {
+      apiKey: pineconeApiKey.trim(),
+      indexName: pineconeIndexName.trim(),
+      namespace: pineconeNamespace.trim(),
+      environment: '',  // No longer needed
+      projectId: ''     // No longer needed
+    };
+    
+    setPineconeConfig(tempPineconeConfig);
+    
+    setIsTesting(true);
+    setConnectionStatus('untested');
+    
+    try {
+      const result = await testPineconeConnection(2, 1000);
+      
+      if (result.success) {
+        setConnectionStatus('success');
+        toast.success("Pinecone Connection Successful", {
+          description: "Successfully connected to your Pinecone index."
+        });
+      } else {
+        setConnectionStatus('failed');
+        setValidationError(result.message);
+        toast.error("Pinecone Connection Failed", {
+          description: result.message
+        });
+      }
+    } catch (error: any) {
+      setConnectionStatus('failed');
+      setValidationError(error.message || "Connection test failed");
+      toast.error("Connection Test Error", {
+        description: error.message || "An unexpected error occurred"
+      });
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const handleSave = () => {
@@ -69,13 +108,13 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
       return;
     }
     
-    // Save Pinecone config
+    // Save Pinecone config - using simplified config that matches the working example
     setPineconeConfig({
       apiKey: pineconeApiKey.trim(),
-      environment: pineconeEnvironment.trim(),
       indexName: pineconeIndexName.trim(),
-      projectId: pineconeProjectId.trim(),
-      namespace: pineconeNamespace.trim()
+      namespace: pineconeNamespace.trim(),
+      environment: '',  // No longer needed
+      projectId: ''     // No longer needed
     });
     
     // Save OpenAI API key
@@ -145,7 +184,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
                   <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p className="max-w-xs">Find your Pinecone API key, index name, and project ID in the Pinecone console.</p>
+                  <p className="max-w-xs">Find your Pinecone API key and index name in the Pinecone console.</p>
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -158,7 +197,7 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
                   type="password"
                   value={pineconeApiKey}
                   onChange={(e) => setPineconeApiKey(e.target.value)}
-                  placeholder="pcsk_..."
+                  placeholder="pc_..."
                   className="pr-8"
                 />
                 <Tooltip>
@@ -173,34 +212,12 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="pineconeEnvironment" className="col-span-1">Environment</Label>
-              <Input
-                id="pineconeEnvironment"
-                value={pineconeEnvironment}
-                onChange={(e) => setPineconeEnvironment(e.target.value)}
-                placeholder="gcp-starter"
-                className="col-span-3"
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="pineconeIndexName" className="col-span-1">Index Name</Label>
               <Input
                 id="pineconeIndexName"
                 value={pineconeIndexName}
                 onChange={(e) => setPineconeIndexName(e.target.value)}
                 placeholder="your-index-name"
-                className="col-span-3"
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="pineconeProjectId" className="col-span-1">Project ID</Label>
-              <Input
-                id="pineconeProjectId"
-                value={pineconeProjectId}
-                onChange={(e) => setPineconeProjectId(e.target.value)}
-                placeholder="abc123def"
                 className="col-span-3"
               />
             </div>
@@ -215,6 +232,22 @@ const SettingsDialog: React.FC<SettingsDialogProps> = ({ open, onOpenChange, onS
                 className="col-span-3"
               />
             </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2">
+            <Button 
+              variant="outline" 
+              onClick={handleTestConnection}
+              disabled={isTesting}
+              className="flex items-center gap-2"
+            >
+              {isTesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : connectionStatus === 'success' ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : null}
+              Test Connection
+            </Button>
           </div>
         </div>
         
