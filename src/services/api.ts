@@ -16,14 +16,16 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
     };
     addMessageToHistory(userMessage);
     
-    // Step 1: Search for relevant documents in Pinecone (top 3 results with similarity >= 0.6)
-    // Lowered threshold from 0.7 to 0.6 to include more potentially relevant results
-    const retrievedChunks = await searchPinecone(message, 3, 0.6);
+    // Step 1: Search for relevant documents in Pinecone (top 5 results with similarity >= 0.35)
+    // Significantly lowered threshold to include more results, and increased topK to 5
+    const retrievedChunks = await searchPinecone(message, 5, 0.35);
+    
+    console.log(`Retrieved ${retrievedChunks.length} chunks from Pinecone`);
     
     // Step 2: Generate a response using OpenAI with the retrieved chunks and conversation context
     const answer = await generateResponseWithOpenAI(message, retrievedChunks, getConversationHistory());
     
-    // Calculate confidence based on the highest similarity score from sources
+    // Calculate confidence based on the highest similarity score from sources or default to 0.5
     const highestSimilarity = retrievedChunks.length > 0 
       ? Math.max(...retrievedChunks.map(s => s.similarity))
       : 0.5;

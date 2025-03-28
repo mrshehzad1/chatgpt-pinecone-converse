@@ -11,20 +11,23 @@ export const generateResponseWithOpenAI = async (query: string, chunks: Source[]
     if (chunks.length > 0) {
       context = "Here are some relevant documents to help answer the query:\n\n";
       chunks.forEach((chunk, i) => {
-        context += `Document ${i+1}: ${chunk.content}\n\n`;
+        context += `Document ${i+1} (Similarity: ${Math.round(chunk.similarity * 100)}%): ${chunk.content}\n\n`;
       });
     } else {
       context = "No relevant documents were found in the knowledge base for this query.";
     }
+    
+    console.log("Context length:", context.length);
     
     // Prepare conversation history
     const messages = [
       {
         role: "system",
         content: `You are a helpful assistant that answers questions based on the provided context. 
-                  If the context doesn't contain relevant information to answer the question, 
-                  acknowledge that and suggest that the user ask a different question. 
-                  Don't make up information that isn't in the context.`
+                  IMPORTANT: Even if the context doesn't seem directly relevant, try to extract useful information and answer the query as best you can.
+                  If the context contains partial information, use it to provide a partial answer.
+                  Only state that you don't have information if the context is completely unrelated or empty.
+                  Be concise but informative in your answers. Always tell what you do know based on the context.`
       },
       {
         role: "user",
@@ -46,6 +49,8 @@ export const generateResponseWithOpenAI = async (query: string, chunks: Source[]
         });
       });
     }
+
+    console.log("Sending request to OpenAI with messages:", JSON.stringify(messages.map(m => ({ role: m.role, contentLength: m.content.length }))));
 
     // Make request to OpenAI
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

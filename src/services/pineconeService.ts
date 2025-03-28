@@ -5,7 +5,7 @@ import { queryToEmbedding } from './embeddingService';
 import { toast } from 'sonner';
 
 // Search Pinecone index for similar documents
-export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.6): Promise<Source[]> => {
+export const searchPinecone = async (query: string, topK: number = 3, similarityThreshold: number = 0.35): Promise<Source[]> => {
   console.log(`Searching Pinecone index "${PINECONE_CONFIG.indexName}" for: ${query}`);
   
   try {
@@ -131,10 +131,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       return [];
     }
     
-    // IMPORTANT: Lower the filtering threshold to include more results that may be relevant
-    // but don't have extremely high similarity scores
+    // SIGNIFICANTLY lower the filtering threshold to include most results
+    // Use the provided similarityThreshold parameter (default 0.35 now)
     const results: Source[] = data.matches
-      .filter((match: any) => match.score >= similarityThreshold)
       .map((match: any) => ({
         id: match.id,
         title: match.metadata?.category || match.metadata?.title || 'Document ' + match.id.substring(0, 8),
@@ -143,7 +142,21 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         url: match.metadata?.url || null
       }));
     
-    console.log(`Found ${results.length} relevant results above threshold ${similarityThreshold}`);
+    console.log(`Found ${results.length} results from Pinecone, returning all regardless of score threshold`);
+    
+    // Return at least some results even if they are below threshold
+    if (results.length === 0 && data.matches && data.matches.length > 0) {
+      console.log('No results above threshold, but returning the best match anyway');
+      const bestMatch = data.matches[0];
+      return [{
+        id: bestMatch.id,
+        title: bestMatch.metadata?.category || bestMatch.metadata?.title || 'Document ' + bestMatch.id.substring(0, 8),
+        content: bestMatch.metadata?.chunk_text || bestMatch.metadata?.text || bestMatch.metadata?.content || 'No content available',
+        similarity: bestMatch.score,
+        url: bestMatch.metadata?.url || null
+      }];
+    }
+    
     return results;
       
   } catch (error: any) {
