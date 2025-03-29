@@ -139,7 +139,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         title: match.metadata?.category || match.metadata?.title || 'Document ' + match.id.substring(0, 8),
         content: match.metadata?.chunk_text || match.metadata?.text || match.metadata?.content || 'No content available',
         similarity: match.score,
-        url: match.metadata?.url || null
+        url: match.metadata?.url || null,
+        metadata: match.metadata || {} // Include the full metadata object
       }));
     
     console.log(`Found ${results.length} results from Pinecone, returning all regardless of score threshold`);
@@ -153,7 +154,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         title: bestMatch.metadata?.category || bestMatch.metadata?.title || 'Document ' + bestMatch.id.substring(0, 8),
         content: bestMatch.metadata?.chunk_text || bestMatch.metadata?.text || bestMatch.metadata?.content || 'No content available',
         similarity: bestMatch.score,
-        url: bestMatch.metadata?.url || null
+        url: bestMatch.metadata?.url || null,
+        metadata: bestMatch.metadata || {} // Include the full metadata object
       }];
     }
     

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ChatMessage as ChatMessageType, Source } from '@/types';
-import { User, Bot, ExternalLink, Info, ChevronDown, ChevronUp, File } from 'lucide-react';
+import { User, Bot, ExternalLink, Info, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -12,12 +12,27 @@ interface ChatMessageProps {
 const SourceItem = ({ source }: { source: Source }) => {
   const [showFullText, setShowFullText] = useState(false);
   
+  // Extract the filename from metadata - look in different possible locations
+  const getDocumentName = () => {
+    // Try to get the original filename first
+    if (source.metadata?.filename) return source.metadata.filename;
+    if (source.metadata?.file_name) return source.metadata.file_name;
+    if (source.metadata?.document_name) return source.metadata.document_name;
+    if (source.metadata?.original_filename) return source.metadata.original_filename;
+    
+    // If no filename found, fall back to title or category fields
+    if (source.title) return source.title;
+    
+    // Last resort: use the ID to create a placeholder name
+    return 'Document ' + source.id.substring(0, 8);
+  };
+  
   return (
     <div key={source.id} className="p-2 rounded bg-background/50 text-xs mb-2 border border-primary/10">
       <div className="flex justify-between items-start mb-1">
         <div className="font-medium flex items-center gap-1">
-          <File className="h-3 w-3" />
-          <span>{source.title || 'Untitled Document'}</span>
+          <FileText className="h-3 w-3" />
+          <span>{getDocumentName()}</span>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>

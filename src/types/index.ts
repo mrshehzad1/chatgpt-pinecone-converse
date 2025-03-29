@@ -14,6 +14,13 @@ export interface Source {
   content: string;
   similarity: number;
   url?: string;
+  metadata?: {
+    [key: string]: any;
+    filename?: string;
+    file_name?: string;
+    document_name?: string;
+    original_filename?: string;
+  };
 }
 
 export interface ChatResponse {
