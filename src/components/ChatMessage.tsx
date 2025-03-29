@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ChatMessage as ChatMessageType, Source } from '@/types';
-import { User, Bot, ExternalLink, Info } from 'lucide-react';
+import { User, Bot, ExternalLink, Info, ChevronDown, ChevronUp, File } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -9,8 +9,72 @@ interface ChatMessageProps {
   message: ChatMessageType;
 }
 
+const SourceItem = ({ source }: { source: Source }) => {
+  const [showFullText, setShowFullText] = useState(false);
+  
+  return (
+    <div key={source.id} className="p-2 rounded bg-background/50 text-xs mb-2 border border-primary/10">
+      <div className="flex justify-between items-start mb-1">
+        <div className="font-medium flex items-center gap-1">
+          <File className="h-3 w-3" />
+          <span>{source.title || 'Untitled Document'}</span>
+        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center">
+              <span>{Math.round(source.similarity * 100)}%</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Similarity score</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      
+      <div className="mt-1">
+        <p className={cn(
+          "text-muted-foreground text-xs",
+          showFullText ? "" : "line-clamp-2"
+        )}>
+          {source.content}
+        </p>
+        
+        <button 
+          onClick={() => setShowFullText(!showFullText)}
+          className="mt-1 text-primary flex items-center gap-1 text-xs hover:underline"
+        >
+          {showFullText ? (
+            <>
+              <ChevronUp className="h-3 w-3" />
+              <span>Show Less</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3 w-3" />
+              <span>Show Full Text</span>
+            </>
+          )}
+        </button>
+      </div>
+      
+      {source.url && (
+        <a 
+          href={source.url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="mt-1 text-primary flex items-center gap-1 text-xs"
+        >
+          <ExternalLink className="h-3 w-3" />
+          <span>View source</span>
+        </a>
+      )}
+    </div>
+  );
+};
+
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  const [showAllSources, setShowAllSources] = useState(false);
   
   const formatTimestamp = (date: Date) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -19,6 +83,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       hour12: true
     }).format(date);
   };
+  
+  // Get sources count for display
+  const sourcesCount = message.sources?.length || 0;
+  // Limit initially displayed sources to 2, but allow expanding
+  const displayedSources = showAllSources 
+    ? message.sources || [] 
+    : (message.sources || []).slice(0, 2);
   
   return (
     <div 
@@ -46,40 +117,33 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           
           {message.sources && message.sources.length > 0 && (
             <div className="mt-3 pt-2 border-t border-primary/10">
-              <details className="text-sm">
-                <summary className="cursor-pointer font-medium flex items-center gap-1 text-xs">
+              <details className="text-sm" open>
+                <summary className="cursor-pointer font-medium flex items-center gap-1 text-xs mb-2">
                   <span>Sources ({message.sources.length})</span>
                 </summary>
-                <div className="mt-2 space-y-2">
-                  {message.sources.map((source: Source) => (
-                    <div key={source.id} className="p-2 rounded bg-background/50 text-xs">
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="font-medium">{source.title}</div>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="text-xs bg-primary/10 px-1.5 py-0.5 rounded-full flex items-center">
-                              <span>{Math.round(source.similarity * 100)}%</span>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Similarity score</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                      <p className="text-muted-foreground line-clamp-2">{source.content}</p>
-                      {source.url && (
-                        <a 
-                          href={source.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="mt-1 text-primary flex items-center gap-1 text-xs"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          <span>View source</span>
-                        </a>
-                      )}
-                    </div>
+                <div className="space-y-1">
+                  {displayedSources.map((source: Source) => (
+                    <SourceItem key={source.id} source={source} />
                   ))}
+                  
+                  {sourcesCount > 2 && (
+                    <button 
+                      onClick={() => setShowAllSources(!showAllSources)}
+                      className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                    >
+                      {showAllSources ? (
+                        <>
+                          <ChevronUp className="h-3 w-3" /> 
+                          <span>Show Fewer Sources</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3" /> 
+                          <span>Show All {sourcesCount} Sources</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </details>
             </div>
