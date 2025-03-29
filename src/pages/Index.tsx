@@ -5,7 +5,7 @@ import { ChatMessage as ChatMessageType } from '@/types';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import Header from '@/components/Header';
-import { Bot, Sparkles, Settings, AlertCircle } from 'lucide-react';
+import { Bot, Gavel, Settings, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOpenAIApiKey } from '@/config/openai';
 import { PINECONE_CONFIG, testPineconeConnection } from '@/config/pinecone';
@@ -193,11 +193,11 @@ const Index = () => {
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                <Sparkles className="h-8 w-8 text-primary animate-pulse-subtle" />
+                <Gavel className="h-8 w-8 text-primary animate-pulse-subtle" />
               </div>
-              <h2 className="text-2xl font-medium mb-2">Welcome to Pinecone Chat</h2>
+              <h2 className="text-2xl font-medium mb-2">Welcome to Construction Law Advisor</h2>
               <p className="text-muted-foreground max-w-md mb-8">
-                Ask me anything about vector databases, semantic search, or how to build AI applications with Pinecone.
+                Ask me anything about construction regulations, building codes, contract law, or liability issues related to the construction industry.
               </p>
               
               {(!getOpenAIApiKey() || !PINECONE_CONFIG.apiKey || !PINECONE_CONFIG.indexName) && (
@@ -212,10 +212,10 @@ const Index = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
-                  "What is a vector database?",
-                  "How does Pinecone work?",
-                  "Explain semantic search.",
-                  "How to use OpenAI with Pinecone?"
+                  "What are the key construction contract regulations?",
+                  "Explain liability in construction accidents.",
+                  "What permits are required for commercial buildings?",
+                  "Summarize construction labor laws."
                 ].map((suggestion, i) => (
                   <button
                     key={i}
