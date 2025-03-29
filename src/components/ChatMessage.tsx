@@ -14,7 +14,10 @@ const SourceItem = ({ source }: { source: Source }) => {
   
   // Extract the filename from metadata - look in different possible locations
   const getDocumentName = () => {
-    // Try to get the original filename first
+    // First check for the "file" field which contains the original PDF name
+    if (source.metadata?.file) return source.metadata.file;
+    
+    // Try to get the original filename from other common fields
     if (source.metadata?.filename) return source.metadata.filename;
     if (source.metadata?.file_name) return source.metadata.file_name;
     if (source.metadata?.document_name) return source.metadata.document_name;

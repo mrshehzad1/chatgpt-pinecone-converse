@@ -20,6 +20,7 @@ export interface Source {
     file_name?: string;
     document_name?: string;
     original_filename?: string;
+    file?: string; // Added the "file" field that contains original PDF name
   };
 }
 
