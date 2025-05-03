@@ -5,55 +5,81 @@ import { toast } from 'sonner';
 // Helper function to safely get and trim localStorage values
 const getLocalStorageItem = (key: string, defaultValue: string = ''): string => {
   try {
-    const value = localStorage.getItem(key);
-    return value ? value.trim() : defaultValue;
+    // Check if we're in a browser environment before accessing localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const value = localStorage.getItem(key);
+      return value ? value.trim() : defaultValue;
+    }
+    return defaultValue;
   } catch (error) {
     console.error(`Error accessing localStorage for ${key}:`, error);
     return defaultValue;
   }
 };
 
-// Pinecone configuration
-export const PINECONE_CONFIG: PineconeConfig = {
-  apiKey: getLocalStorageItem('pinecone_api_key'),
-  environment: getLocalStorageItem('pinecone_environment', 'gcp-starter'),
-  indexName: getLocalStorageItem('pinecone_index_name'),
-  projectId: getLocalStorageItem('pinecone_project_id'),
-  namespace: getLocalStorageItem('pinecone_namespace')
+// Initialize Pinecone configuration safely with browser check
+let PINECONE_CONFIG_DEFAULT = {
+  apiKey: '',
+  environment: 'gcp-starter',
+  indexName: '',
+  projectId: '',
+  namespace: ''
 };
 
+// Safely initialize the configuration
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    PINECONE_CONFIG_DEFAULT = {
+      apiKey: getLocalStorageItem('pinecone_api_key'),
+      environment: getLocalStorageItem('pinecone_environment', 'gcp-starter'),
+      indexName: getLocalStorageItem('pinecone_index_name'),
+      projectId: getLocalStorageItem('pinecone_project_id'),
+      namespace: getLocalStorageItem('pinecone_namespace')
+    };
+  }
+} catch (error) {
+  console.error('Error initializing Pinecone config from localStorage:', error);
+}
+
+// Pinecone configuration
+export const PINECONE_CONFIG: PineconeConfig = PINECONE_CONFIG_DEFAULT;
+
 export const setPineconeConfig = (config: Partial<PineconeConfig>): void => {
-  if (config.apiKey !== undefined) {
-    // CRITICAL: Remove ALL whitespace, newlines, and invisible characters from API key
-    // This handles all possible whitespace characters in Unicode
-    const cleanKey = config.apiKey.replace(/\s+/g, '').trim();
-    localStorage.setItem('pinecone_api_key', cleanKey);
-    PINECONE_CONFIG.apiKey = cleanKey;
-    console.log('Pinecone API key set:', `${cleanKey.substring(0, 5)}...${cleanKey.substring(cleanKey.length - 3)}`);
-  }
-  
-  if (config.environment !== undefined) {
-    const trimmedEnv = config.environment.trim();
-    localStorage.setItem('pinecone_environment', trimmedEnv);
-    PINECONE_CONFIG.environment = trimmedEnv;
-  }
-  
-  if (config.indexName !== undefined) {
-    const trimmedIndex = config.indexName.trim();
-    localStorage.setItem('pinecone_index_name', trimmedIndex);
-    PINECONE_CONFIG.indexName = trimmedIndex;
-  }
-  
-  if (config.projectId !== undefined) {
-    const trimmedProject = config.projectId.trim();
-    localStorage.setItem('pinecone_project_id', trimmedProject);
-    PINECONE_CONFIG.projectId = trimmedProject;
-  }
-  
-  if (config.namespace !== undefined) {
-    const trimmedNamespace = config.namespace.trim();
-    localStorage.setItem('pinecone_namespace', trimmedNamespace);
-    PINECONE_CONFIG.namespace = trimmedNamespace;
+  try {
+    if (config.apiKey !== undefined) {
+      // CRITICAL: Remove ALL whitespace, newlines, and invisible characters from API key
+      // This handles all possible whitespace characters in Unicode
+      const cleanKey = config.apiKey.replace(/\s+/g, '').trim();
+      localStorage.setItem('pinecone_api_key', cleanKey);
+      PINECONE_CONFIG.apiKey = cleanKey;
+      console.log('Pinecone API key set:', `${cleanKey.substring(0, 5)}...${cleanKey.substring(cleanKey.length - 3)}`);
+    }
+    
+    if (config.environment !== undefined) {
+      const trimmedEnv = config.environment.trim();
+      localStorage.setItem('pinecone_environment', trimmedEnv);
+      PINECONE_CONFIG.environment = trimmedEnv;
+    }
+    
+    if (config.indexName !== undefined) {
+      const trimmedIndex = config.indexName.trim();
+      localStorage.setItem('pinecone_index_name', trimmedIndex);
+      PINECONE_CONFIG.indexName = trimmedIndex;
+    }
+    
+    if (config.projectId !== undefined) {
+      const trimmedProject = config.projectId.trim();
+      localStorage.setItem('pinecone_project_id', trimmedProject);
+      PINECONE_CONFIG.projectId = trimmedProject;
+    }
+    
+    if (config.namespace !== undefined) {
+      const trimmedNamespace = config.namespace.trim();
+      localStorage.setItem('pinecone_namespace', trimmedNamespace);
+      PINECONE_CONFIG.namespace = trimmedNamespace;
+    }
+  } catch (error) {
+    console.error('Error setting Pinecone config:', error);
   }
 };
 
@@ -112,7 +138,8 @@ export const testPineconeConnection = async (retries = 3, delay = 1000): Promise
         method: 'GET',
         headers: {
           'Api-Key': apiKey,
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Access-Control-Allow-Origin': '*', // Add CORS header for Vercel
         }
       });
       

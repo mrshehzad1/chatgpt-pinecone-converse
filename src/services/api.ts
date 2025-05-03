@@ -3,6 +3,7 @@ import { ChatMessage, ChatResponse, ApiError } from '@/types';
 import { searchPinecone } from './pineconeService';
 import { generateResponseWithOpenAI } from './openaiService';
 import { getConversationHistory, addMessageToHistory, resetConversation, getConversationId } from './conversationService';
+import { toast } from 'sonner';
 
 // Send a message directly to RAG system
 export const sendMessage = async (message: string): Promise<ChatResponse> => {
@@ -17,10 +18,20 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
     addMessageToHistory(userMessage);
     
     // Step 1: Search for relevant documents in Pinecone (top 5 results with similarity >= 0.35)
-    // Significantly lowered threshold to include more results, and increased topK to 5
-    const retrievedChunks = await searchPinecone(message, 5, 0.35);
-    
-    console.log(`Retrieved ${retrievedChunks.length} chunks from Pinecone`);
+    // Add a try/catch block specifically for the Pinecone search to prevent complete failure
+    let retrievedChunks = [];
+    try {
+      retrievedChunks = await searchPinecone(message, 5, 0.35);
+      console.log(`Retrieved ${retrievedChunks.length} chunks from Pinecone`);
+    } catch (error: any) {
+      console.error('Error in Pinecone search, continuing with empty sources:', error);
+      toast.error("Source Retrieval Issue", {
+        description: "Unable to retrieve sources from Pinecone, but continuing with the conversation.",
+        duration: 5000,
+      });
+      // Continue with empty sources rather than failing completely
+      retrievedChunks = [];
+    }
     
     // Step 2: Generate a response using OpenAI with the retrieved chunks and conversation context
     const answer = await generateResponseWithOpenAI(message, retrievedChunks, getConversationHistory());

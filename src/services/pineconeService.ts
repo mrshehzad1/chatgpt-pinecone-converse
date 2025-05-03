@@ -66,7 +66,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       headers: {
         'Api-Key': apiKey,
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Access-Control-Allow-Origin': '*', // Add CORS header for Vercel
       },
       body: JSON.stringify(requestBody),
     });
@@ -143,7 +144,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         metadata: match.metadata || {} // Include the full metadata object
       }));
     
-    console.log(`Found ${results.length} results from Pinecone, returning all regardless of score threshold`);
+    console.log(`Found ${results.length} results from Pinecone, scores:`, results.map(r => r.similarity));
     
     // Return at least some results even if they are below threshold
     if (results.length === 0 && data.matches && data.matches.length > 0) {
@@ -169,9 +170,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       duration: 8000,
     });
     
-    throw {
-      message: `Failed to search vector database: ${error.message}`,
-      status: error.status || 500
-    } as ApiError;
+    // Return an empty array instead of throwing to avoid breaking the app
+    return [];
   }
 };
+
