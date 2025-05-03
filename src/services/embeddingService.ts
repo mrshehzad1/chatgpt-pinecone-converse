@@ -17,40 +17,18 @@ export const queryToEmbedding = async (query: string): Promise<number[]> => {
       throw new Error(errorMessage);
     }
     
-    // Check if we're running in Vercel production environment
-    const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
-    let response;
-    
-    if (isVercel) {
-      // For Vercel, use a server-side proxy to avoid CORS issues
-      console.log('Using Vercel-compatible proxy for embedding generation');
-      response = await fetch('/api/openai-proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: query,
-          apiKey: OPENAI_CONFIG.apiKey.trim(),
-          model: 'text-embedding-3-small'
-        }),
-      });
-    } else {
-      // For local development, make direct API call
-      console.log('Making direct request to OpenAI API');
-      // Make request to OpenAI - matching the working example format
-      response = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_CONFIG.apiKey.trim()}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small', // Using newer model as in the example
-          input: query
-        }),
-      });
-    }
+    // Make request to OpenAI - matching the working example format
+    const response = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_CONFIG.apiKey.trim()}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small', // Using newer model as in the example
+        input: query
+      }),
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -67,16 +45,11 @@ export const queryToEmbedding = async (query: string): Promise<number[]> => {
 
     const data = await response.json();
     
-    // Handle the format difference between proxy and direct API
-    const embedding = isVercel 
-      ? data.embedding 
-      : data.data?.[0]?.embedding;
-    
-    if (!embedding) {
-      throw new Error('Invalid response: embedding is missing');
+    if (!data?.data?.[0]?.embedding) {
+      throw new Error('Invalid response from OpenAI: embedding is missing');
     }
     
-    return embedding;
+    return data.data[0].embedding;
   } catch (error: any) {
     console.error('Error generating embedding:', error);
     
