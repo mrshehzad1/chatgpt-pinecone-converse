@@ -104,9 +104,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   
   // Get sources count for display
   const sourcesCount = message.sources?.length || 0;
+  
+  // Check if sources array exists and has items
+  const hasSources = Array.isArray(message.sources) && message.sources.length > 0;
+  
   // Limit initially displayed sources to 2, but allow expanding
   const displayedSources = showAllSources 
-    ? message.sources || [] 
+    ? (message.sources || []) 
     : (message.sources || []).slice(0, 2);
   
   return (
@@ -133,37 +137,44 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             {message.content}
           </div>
           
-          {message.sources && message.sources.length > 0 && (
+          {/* Only show sources section if we're actually finished generating the response */}
+          {!isUser && (
             <div className="mt-3 pt-2 border-t border-primary/10">
-              <details className="text-sm" open>
-                <summary className="cursor-pointer font-medium flex items-center gap-1 text-xs mb-2">
-                  <span>Sources ({message.sources.length})</span>
-                </summary>
-                <div className="space-y-1">
-                  {displayedSources.map((source: Source) => (
-                    <SourceItem key={source.id} source={source} />
-                  ))}
-                  
-                  {sourcesCount > 2 && (
-                    <button 
-                      onClick={() => setShowAllSources(!showAllSources)}
-                      className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
-                    >
-                      {showAllSources ? (
-                        <>
-                          <ChevronUp className="h-3 w-3" /> 
-                          <span>Show Fewer Sources</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="h-3 w-3" /> 
-                          <span>Show All {sourcesCount} Sources</span>
-                        </>
-                      )}
-                    </button>
-                  )}
+              {hasSources ? (
+                <details className="text-sm" open>
+                  <summary className="cursor-pointer font-medium flex items-center gap-1 text-xs mb-2">
+                    <span>Sources ({message.sources.length})</span>
+                  </summary>
+                  <div className="space-y-1">
+                    {displayedSources.map((source: Source) => (
+                      <SourceItem key={source.id} source={source} />
+                    ))}
+                    
+                    {sourcesCount > 2 && (
+                      <button 
+                        onClick={() => setShowAllSources(!showAllSources)}
+                        className="text-xs text-primary hover:underline mt-1 flex items-center gap-1"
+                      >
+                        {showAllSources ? (
+                          <>
+                            <ChevronUp className="h-3 w-3" /> 
+                            <span>Show Fewer Sources</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3" /> 
+                            <span>Show All {sourcesCount} Sources</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </details>
+              ) : (
+                <div className="text-xs text-muted-foreground italic">
+                  No sources found for this response.
                 </div>
-              </details>
+              )}
             </div>
           )}
           

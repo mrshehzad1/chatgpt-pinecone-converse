@@ -33,10 +33,23 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       throw new Error('Could not get Pinecone index host information');
     }
     
-    // Use the actual host from describe index response instead of api.pinecone.io
+    // Use the actual host from describe index response
     const host = indexInfo.host;
-    const queryUrl = `https://${host}/query`;
-    console.log(`Making request to Pinecone at: ${queryUrl}`);
+    
+    // Check if we're running in Vercel production environment
+    const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+    console.log(`Environment detection - Running on Vercel: ${isVercel}`);
+    
+    let queryUrl;
+    // For Vercel environments, add CORS headers via a proxy setup
+    if (isVercel) {
+      // Use a CORS proxy specifically for production environments
+      queryUrl = `/api/pinecone-proxy?host=${encodeURIComponent(host)}`;
+      console.log(`Using Vercel-compatible proxy URL: ${queryUrl}`);
+    } else {
+      queryUrl = `https://${host}/query`;
+      console.log(`Making direct request to Pinecone at: ${queryUrl}`);
+    }
     
     // Prepare request body following the official Pinecone format from the example
     const requestBody: any = {
@@ -60,16 +73,36 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request with proper headers - using the direct host URL
-    const response = await fetch(queryUrl, {
+    // Prepare headers for the request
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    // Only add Api-Key header for direct requests (not for proxy requests)
+    if (!isVercel) {
+      headers['Api-Key'] = apiKey;
+    }
+    
+    // Make the query request with proper headers
+    const fetchOptions: RequestInit = {
       method: 'POST',
-      headers: {
-        'Api-Key': apiKey,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(requestBody),
-    });
+      headers,
+      body: JSON.stringify(isVercel ? { 
+        pineconeBody: requestBody,
+        apiKey: apiKey  // Pass API key in request body for proxy
+      } : requestBody),
+    };
+    
+    // Add credentials for CORS if in browser environment
+    if (typeof window !== 'undefined') {
+      fetchOptions.credentials = 'same-origin';
+    }
+    
+    // Log the request attempt
+    console.log(`Attempting ${isVercel ? 'proxied' : 'direct'} request to Pinecone`);
+    
+    const response = await fetch(queryUrl, fetchOptions);
     
     // Handle errors
     if (!response.ok) {
@@ -88,13 +121,21 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         const errorMessage = 'Pinecone authorization failed: Invalid API key or permissions';
         console.error(errorMessage);
         
-        // Show detailed toast with helpful instructions
         toast.error("Pinecone Authorization Failed", {
           description: "Double check that your API key is correct, hasn't expired, and has query permissions for this index. Make sure it has no extra spaces or invisible characters.",
           duration: 10000,
         });
         
         throw new Error(errorMessage);
+      }
+      
+      // Handle CORS errors specially
+      if (errorBody.includes('CORS') || errorBody.includes('cors')) {
+        console.error('CORS error detected in Pinecone response');
+        toast.error("CORS Error", {
+          description: "The application can't access Pinecone directly due to CORS restrictions. Consider setting up a proxy on your server.",
+          duration: 10000,
+        });
       }
       
       // Try to parse error response
@@ -131,8 +172,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       return [];
     }
     
-    // SIGNIFICANTLY lower the filtering threshold to include most results
-    // Use the provided similarityThreshold parameter (default 0.35 now)
+    // Map the results to Source objects
     const results: Source[] = data.matches
       .map((match: any) => ({
         id: match.id,
