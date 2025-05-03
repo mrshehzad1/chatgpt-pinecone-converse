@@ -67,6 +67,11 @@ const Index = () => {
         } else {
           setConfigError(null);
           console.log('Pinecone connection successful');
+          
+          // Log if we're on Vercel to help debug
+          if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+            console.log('Running on Vercel deployment');
+          }
         }
       } catch (err: any) {
         console.error('Error testing Pinecone connection:', err);
@@ -109,7 +114,7 @@ const Index = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Add thinking message
+      // Add thinking message - without setting sources property
       const thinkingMessage: ChatMessageType = {
         id: `thinking-${Date.now()}`,
         role: 'assistant',
@@ -132,7 +137,8 @@ const Index = () => {
           content: response.answer,
           timestamp: new Date(),
           sources: response.sources,
-          confidence: response.confidence
+          confidence: response.confidence,
+          sourceError: response.sourceError
         };
         
         return [...filtered, assistantMessage];

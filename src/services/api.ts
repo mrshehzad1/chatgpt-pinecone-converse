@@ -20,15 +20,20 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
     // Step 1: Search for relevant documents in Pinecone (top 5 results with similarity >= 0.35)
     // Add a try/catch block specifically for the Pinecone search to prevent complete failure
     let retrievedChunks = [];
+    let pineconeError = null;
+    
     try {
+      console.log('Starting Pinecone search for query:', message);
       retrievedChunks = await searchPinecone(message, 5, 0.35);
       console.log(`Retrieved ${retrievedChunks.length} chunks from Pinecone`);
     } catch (error: any) {
+      pineconeError = error;
       console.error('Error in Pinecone search, continuing with empty sources:', error);
       toast.error("Source Retrieval Issue", {
-        description: "Unable to retrieve sources from Pinecone, but continuing with the conversation.",
+        description: "Unable to retrieve sources from knowledge base. The assistant will rely on its general knowledge only.",
         duration: 5000,
       });
+      
       // Continue with empty sources rather than failing completely
       retrievedChunks = [];
     }
@@ -48,7 +53,8 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
       content: answer,
       timestamp: new Date(),
       sources: retrievedChunks,
-      confidence: highestSimilarity
+      confidence: highestSimilarity,
+      sourceError: pineconeError ? true : false // Add flag to indicate if there was a source retrieval error
     };
     addMessageToHistory(assistantMessage);
     
@@ -57,7 +63,8 @@ export const sendMessage = async (message: string): Promise<ChatResponse> => {
       answer,
       confidence: highestSimilarity,
       sources: retrievedChunks,
-      conversationId: getConversationId()
+      conversationId: getConversationId(),
+      sourceError: pineconeError ? true : false
     };
   } catch (error: any) {
     console.error('Error in sendMessage:', error);
