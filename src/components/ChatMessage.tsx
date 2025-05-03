@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ChatMessage as ChatMessageType, Source } from '@/types';
-import { User, Bot, ExternalLink, Info, ChevronDown, ChevronUp, FileText, AlertCircle, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { User, Bot, ExternalLink, Info, ChevronDown, ChevronUp, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -54,7 +54,7 @@ const SourceItem = ({ source }: { source: Source }) => {
           "text-muted-foreground text-xs",
           showFullText ? "" : "line-clamp-2"
         )}>
-          {source.content || "No content available"}
+          {source.content}
         </p>
         
         <button 
@@ -108,9 +108,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const displayedSources = showAllSources 
     ? message.sources || [] 
     : (message.sources || []).slice(0, 2);
-    
-  // Check if this message is the thinking/loading message
-  const isThinkingMessage = message.content.includes('Searching vector database and generating response');
   
   return (
     <div 
@@ -136,7 +133,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             {message.content}
           </div>
           
-          {message.sources && message.sources.length > 0 ? (
+          {message.sources && message.sources.length > 0 && (
             <div className="mt-3 pt-2 border-t border-primary/10">
               <details className="text-sm" open>
                 <summary className="cursor-pointer font-medium flex items-center gap-1 text-xs mb-2">
@@ -168,21 +165,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
                 </div>
               </details>
             </div>
-          ) : message.role === 'assistant' && !isThinkingMessage ? (
-            <div className="mt-3 pt-2 border-t border-primary/10 text-xs text-muted-foreground">
-              {message.sourceError ? (
-                <div className="flex items-center gap-1 text-amber-500">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>Could not access knowledge base. Response generated from general knowledge.</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>No relevant sources found for this response</span>
-                </div>
-              )}
-            </div>
-          ) : null}
+          )}
           
           <div className="mt-1 text-xs text-muted-foreground/70 flex justify-end">
             {formatTimestamp(message.timestamp)}

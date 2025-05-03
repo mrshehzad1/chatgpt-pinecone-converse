@@ -6,7 +6,6 @@ export interface ChatMessage {
   timestamp: Date;
   sources?: Source[];
   confidence?: number;
-  sourceError?: boolean;
 }
 
 export interface Source {
@@ -30,7 +29,6 @@ export interface ChatResponse {
   confidence: number;
   sources: Source[];
   conversationId: string;
-  sourceError?: boolean;
 }
 
 export interface PineconeConfig {

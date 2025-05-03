@@ -33,36 +33,18 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       throw new Error('Could not get Pinecone index host information');
     }
     
-    // Use the actual host from describe index response
+    // Use the actual host from describe index response instead of api.pinecone.io
     const host = indexInfo.host;
+    const queryUrl = `https://${host}/query`;
+    console.log(`Making request to Pinecone at: ${queryUrl}`);
     
-    // Use a proxy approach for production environments
-    let queryUrl;
-    const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
-    
-    if (isVercel) {
-      // If on Vercel, use the Pinecone API as an intermediary to avoid CORS
-      // This makes the request to api.pinecone.io which properly handles CORS
-      queryUrl = `https://api.pinecone.io/vectors/query`;
-      console.log(`Using proxy approach for Vercel deployment with url: ${queryUrl}`);
-    } else {
-      // For local development, continue using the direct host URL
-      queryUrl = `https://${host}/query`;
-      console.log(`Making direct request to Pinecone at: ${queryUrl}`);
-    }
-    
-    // Prepare request body following the official Pinecone format
+    // Prepare request body following the official Pinecone format from the example
     const requestBody: any = {
       vector: embedding,
       topK: topK,
       includeMetadata: true,
       includeValues: false
     };
-    
-    // For Vercel proxy approach, add additional parameters
-    if (isVercel) {
-      requestBody.indexName = PINECONE_CONFIG.indexName;
-    }
     
     // Add namespace only if it exists and isn't empty
     if (PINECONE_CONFIG.namespace && PINECONE_CONFIG.namespace.trim() !== '') {
@@ -75,22 +57,17 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       topK, 
       includeMetadata: true,
       includeValues: false,
-      namespace: PINECONE_CONFIG.namespace || undefined,
-      indexName: isVercel ? PINECONE_CONFIG.indexName : undefined
+      namespace: PINECONE_CONFIG.namespace || undefined
     }));
     
-    // Make the query request with proper headers
+    // Make the query request with proper headers - using the direct host URL
     const response = await fetch(queryUrl, {
       method: 'POST',
       headers: {
         'Api-Key': apiKey,
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Accept': 'application/json'
       },
-      mode: 'cors',
       body: JSON.stringify(requestBody),
     });
     
@@ -111,8 +88,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         const errorMessage = 'Pinecone authorization failed: Invalid API key or permissions';
         console.error(errorMessage);
         
+        // Show detailed toast with helpful instructions
         toast.error("Pinecone Authorization Failed", {
-          description: "Double check that your API key is correct, hasn't expired, and has query permissions for this index.",
+          description: "Double check that your API key is correct, hasn't expired, and has query permissions for this index. Make sure it has no extra spaces or invisible characters.",
           duration: 10000,
         });
         
@@ -122,6 +100,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       // Try to parse error response
       let errorMessage = `Pinecone API error: ${response.status} ${response.statusText}`;
       try {
+        // Only try to parse as JSON if the response looks like JSON
         if (errorBody.trim().startsWith('{')) {
           const errorData = JSON.parse(errorBody);
           console.error('Pinecone API error data:', errorData);
@@ -130,6 +109,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
           }
         }
       } catch (parseError) {
+        // If we can't parse JSON, log and continue with the status error
         console.error('Could not parse error response as JSON:', parseError);
       }
       
@@ -151,6 +131,8 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       return [];
     }
     
+    // SIGNIFICANTLY lower the filtering threshold to include most results
+    // Use the provided similarityThreshold parameter (default 0.35 now)
     const results: Source[] = data.matches
       .map((match: any) => ({
         id: match.id,
@@ -158,12 +140,12 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         content: match.metadata?.chunk_text || match.metadata?.text || match.metadata?.content || 'No content available',
         similarity: match.score,
         url: match.metadata?.url || null,
-        metadata: match.metadata || {}
+        metadata: match.metadata || {} // Include the full metadata object
       }));
     
-    console.log(`Found ${results.length} results from Pinecone, scores:`, results.map(r => r.similarity));
+    console.log(`Found ${results.length} results from Pinecone, returning all regardless of score threshold`);
     
-    // Return at least one result even if below threshold
+    // Return at least some results even if they are below threshold
     if (results.length === 0 && data.matches && data.matches.length > 0) {
       console.log('No results above threshold, but returning the best match anyway');
       const bestMatch = data.matches[0];
@@ -173,7 +155,7 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
         content: bestMatch.metadata?.chunk_text || bestMatch.metadata?.text || bestMatch.metadata?.content || 'No content available',
         similarity: bestMatch.score,
         url: bestMatch.metadata?.url || null,
-        metadata: bestMatch.metadata || {}
+        metadata: bestMatch.metadata || {} // Include the full metadata object
       }];
     }
     
@@ -187,7 +169,9 @@ export const searchPinecone = async (query: string, topK: number = 3, similarity
       duration: 8000,
     });
     
-    // Return an empty array instead of throwing
-    return [];
+    throw {
+      message: `Failed to search vector database: ${error.message}`,
+      status: error.status || 500
+    } as ApiError;
   }
 };

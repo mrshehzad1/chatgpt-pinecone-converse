@@ -5,7 +5,7 @@ import { ChatMessage as ChatMessageType } from '@/types';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import Header from '@/components/Header';
-import { Bot, Gavel, Settings, AlertCircle } from 'lucide-react';
+import { Bot, Sparkles, Settings, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { getOpenAIApiKey } from '@/config/openai';
 import { PINECONE_CONFIG, testPineconeConnection } from '@/config/pinecone';
@@ -67,11 +67,6 @@ const Index = () => {
         } else {
           setConfigError(null);
           console.log('Pinecone connection successful');
-          
-          // Log if we're on Vercel to help debug
-          if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
-            console.log('Running on Vercel deployment');
-          }
         }
       } catch (err: any) {
         console.error('Error testing Pinecone connection:', err);
@@ -114,7 +109,7 @@ const Index = () => {
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Add thinking message - without setting sources property
+      // Add thinking message
       const thinkingMessage: ChatMessageType = {
         id: `thinking-${Date.now()}`,
         role: 'assistant',
@@ -137,8 +132,7 @@ const Index = () => {
           content: response.answer,
           timestamp: new Date(),
           sources: response.sources,
-          confidence: response.confidence,
-          sourceError: response.sourceError
+          confidence: response.confidence
         };
         
         return [...filtered, assistantMessage];
@@ -186,7 +180,7 @@ const Index = () => {
     <div className="min-h-screen flex flex-col">
       <Header onResetConversation={handleResetConversation} />
       
-      <main className="flex-1 py-4 sm:py-6">
+      <main className="flex-1 py-6">
         <div className="chat-container">
           {configError && (
             <Alert variant="destructive" className="mb-4 mx-auto max-w-3xl">
@@ -198,38 +192,38 @@ const Index = () => {
           
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                <Gavel className="h-6 w-6 sm:h-8 sm:w-8 text-primary animate-pulse-subtle" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <Sparkles className="h-8 w-8 text-primary animate-pulse-subtle" />
               </div>
-              <h2 className="text-xl sm:text-2xl font-medium mb-2">Welcome to Construction Law Advisor</h2>
-              <p className="text-muted-foreground max-w-md mb-6 sm:mb-8 text-sm sm:text-base">
-                Ask me anything about construction regulations, building codes, contract law, or liability issues related to the construction industry.
+              <h2 className="text-2xl font-medium mb-2">Welcome to Pinecone Chat</h2>
+              <p className="text-muted-foreground max-w-md mb-8">
+                Ask me anything about vector databases, semantic search, or how to build AI applications with Pinecone.
               </p>
               
               {(!getOpenAIApiKey() || !PINECONE_CONFIG.apiKey || !PINECONE_CONFIG.indexName) && (
                 <button
                   onClick={() => setSettingsOpen(true)}
-                  className="mb-6 sm:mb-8 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
+                  className="mb-8 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
                 >
                   <Settings className="h-4 w-4" />
                   <span>Configure API Settings</span>
                 </button>
               )}
               
-              <div className="grid grid-cols-1 gap-3 w-full max-w-lg sm:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
                 {[
-                  "What are the key construction contract regulations?",
-                  "Explain liability in construction accidents.",
-                  "What permits are required for commercial buildings?",
-                  "Summarize construction labor laws."
+                  "What is a vector database?",
+                  "How does Pinecone work?",
+                  "Explain semantic search.",
+                  "How to use OpenAI with Pinecone?"
                 ].map((suggestion, i) => (
                   <button
                     key={i}
                     onClick={() => handleSendMessage(suggestion)}
                     disabled={isLoading || !getOpenAIApiKey() || !PINECONE_CONFIG.indexName}
-                    className="text-left p-3 rounded-xl border border-border hover:bg-secondary/50 transition-colors floating-button disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                    className="text-left p-3 rounded-xl border border-border hover:bg-secondary/50 transition-colors floating-button disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="line-clamp-2">{suggestion}</span>
+                    <span className="text-sm">{suggestion}</span>
                   </button>
                 ))}
               </div>
